@@ -5,10 +5,10 @@ Flask Web Application
 import os
 import logging
 from flask import Flask, render_template, request, jsonify
-from scraper import PlaywrightScraper, AIExtractor, SheetsWriter
+from scraper.playwright_scraper import scrape_page_sync
+from scraper import AIExtractor, SheetsWriter
 from models import JobData
 from config import settings, validate_settings, get_google_credentials
-import asyncio
 
 # Configure logging
 logging.basicConfig(
@@ -36,7 +36,7 @@ def tutorial():
 
 
 @app.route('/api/scrape', methods=['POST'])
-async def scrape():
+def scrape():
     """
     API endpoint to scrape a job posting
 
@@ -72,14 +72,7 @@ async def scrape():
 
         # Step 1: Scrape web page
         logger.info("Step 1: Scraping web page...")
-        scraper = PlaywrightScraper(
-            headless=settings.headless_browser,
-            timeout=settings.page_timeout
-        )
-
-        scrape_result = await asyncio.to_thread(
-            scraper.scrape_page_sync, url, settings.headless_browser
-        )
+        scrape_result = scrape_page_sync(url, settings.headless_browser)
 
         if not scrape_result.get('success'):
             return jsonify({
@@ -285,14 +278,14 @@ def health():
 @app.errorhandler(404)
 def not_found(error):
     """Handle 404 errors"""
-    return render_template('404.html'), 404
+    return jsonify({"error": "Not found", "message": str(error)}), 404
 
 
 @app.errorhandler(500)
 def internal_error(error):
     """Handle 500 errors"""
     logger.error(f"Internal server error: {str(error)}")
-    return render_template('500.html'), 500
+    return jsonify({"error": "Internal server error", "message": str(error)}), 500
 
 
 def main():
