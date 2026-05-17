@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     delay_between_requests: int = 2
 
     # AI Configuration
-    ai_model: str = "gemini-1.5-flash"
+    ai_model: str = "models/gemini-1.5-flash"
     ai_temperature: float = 0.1
     ai_simple_mode: bool = True  # Use simplified prompt for faster processing
 
