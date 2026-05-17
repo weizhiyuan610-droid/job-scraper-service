@@ -36,7 +36,7 @@ def tutorial():
 
 
 @app.route('/api/scrape', methods=['POST'])
-def scrape():
+async def scrape():
     """
     API endpoint to scrape a job posting
 
@@ -77,8 +77,8 @@ def scrape():
             timeout=settings.page_timeout
         )
 
-        scrape_result = await asyncio.create_task(
-            asyncio.to_thread(scraper.scrape_page_sync, url, settings.headless_browser)
+        scrape_result = await asyncio.to_thread(
+            scraper.scrape_page_sync, url, settings.headless_browser
         )
 
         if not scrape_result.get('success'):
