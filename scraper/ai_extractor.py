@@ -5,8 +5,7 @@ import json
 import os
 from typing import Optional, Dict
 import logging
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +52,7 @@ class AIExtractor:
             # Call Gemini API
             response = self.model.generate_content(
                 prompt,
-                generation_config=types.GenerationConfig(
+                generation_config=genai.GenerationConfig(
                     temperature=0.1,  # Low temperature for consistent output
                     max_output_tokens=2000,
                     response_mime_type="application/json"
