@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Install Playwright browsers
 RUN playwright install chromium
-RUN playwright install-deps chromium
+# Skip install-deps as it causes package dependency issues in newer Debian versions
 
 # Copy application code
 COPY . .
