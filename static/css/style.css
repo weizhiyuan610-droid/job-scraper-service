@@ -1,0 +1,118 @@
+/**
+ * Event Horizon Lab - Job Scraper Styles
+ */
+
+/* Custom animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Input field highlighting */
+.job-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Visa sponsorship select colors */
+select#visa_sponsorship option[value="Yes"] {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+select#visa_sponsorship option[value="No"] {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+select#visa_sponsorship option[value="Case by case"] {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+/* Button hover effects */
+.btn-hover {
+    transition: all 0.2s ease;
+}
+
+.btn-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Confidence score colors */
+.confidence-high {
+    color: #10b981;
+}
+
+.confidence-medium {
+    color: #f59e0b;
+}
+
+.confidence-low {
+    color: #ef4444;
+}
+
+/* Loading animation */
+.loading-spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    min-width: 300px;
+    z-index: 9999;
+}
+
+/* Error message styling */
+.error-message {
+    background-color: #fee2e2;
+    border-left: 4px solid #ef4444;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0.5rem;
+}
+
+/* Success message styling */
+.success-message {
+    background-color: #d1fae5;
+    border-left: 4px solid #10b981;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+
+    .grid-cols-2 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Print styles */
+@media print {
+    .no-print {
+        display: none;
+    }
+}
