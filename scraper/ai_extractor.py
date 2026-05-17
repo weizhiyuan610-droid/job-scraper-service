@@ -41,7 +41,7 @@ class AIExtractor:
                 - error: str (if failed)
         """
         try:
-            from .prompts import JOB_EXTRACTION_PROMPT, JOB_EXTRACTION_PROMPT_SIMPLE
+            from prompts import JOB_EXTRACTION_PROMPT, JOB_EXTRACTION_PROMPT_SIMPLE
 
             # Select prompt based on mode
             prompt_template = JOB_EXTRACTION_PROMPT_SIMPLE if simple_mode else JOB_EXTRACTION_PROMPT
