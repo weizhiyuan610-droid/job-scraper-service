@@ -98,18 +98,30 @@ class SheetsWriter:
                 json.dump(credentials_dict, f)
                 temp_path = f.name
 
-            # DEBUG: Read back the temp file to see what was written
+            # CRITICAL FIX: json.dump() escapes actual newlines to \n strings
+            # We need to read the file back and fix the private_key field
             logger.info(f"[DEBUG] Temp file created at: {temp_path}")
             with open(temp_path, 'r') as f:
                 file_content = f.read()
-                # Find private_key in the file
-                import re
-                match = re.search(r'"private_key"\s*:\s*"([^"]*)"', file_content)
-                if match:
-                    file_private_key = match.group(1)
-                    logger.info(f"[DEBUG] private_key IN TEMP FILE (first 200 chars): {repr(file_private_key[:200])}")
-                    logger.info(f"[DEBUG] private_key in file contains literal \\n? {'\\n' in file_private_key}")
-                    logger.info(f"[DEBUG] private_key in file contains actual newline? {chr(10) in file_private_key}")
+
+            # Replace literal \n in private_key value with actual newlines
+            # This regex finds "private_key": "..." and replaces \n with actual newlines only within the value
+            def fix_private_key_newlines(match):
+                private_key_value = match.group(1)
+                # Replace literal \n with actual newline
+                fixed_value = private_key_value.replace('\\n', '\n').replace('\\r', '\r').replace('\\t', '\t')
+                return f'"private_key": "{fixed_value}"'
+
+            import re
+            # Pattern to match "private_key": "value" where value may contain escaped characters
+            pattern = r'"private_key"\s*:\s*"((?:[^"\\]|\\.)*)"'
+            fixed_content = re.sub(pattern, fix_private_key_newlines, file_content)
+
+            # Write the fixed content back to the file
+            with open(temp_path, 'w') as f:
+                f.write(fixed_content)
+
+            logger.info("[DEBUG] Fixed newlines in private_key in temp file")
 
             try:
                 credentials = ServiceAccountCredentials.from_json_keyfile_name(temp_path, scope)
