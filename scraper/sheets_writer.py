@@ -33,11 +33,15 @@ class SheetsWriter:
             import json
             from tempfile import NamedTemporaryFile
 
+            logger.info(f"[DEBUG] SheetsWriter received credentials_json type: {type(credentials_json)}")
+
             # Handle escaped JSON in environment variables
             if isinstance(credentials_json, str):
+                logger.info("[DEBUG] credentials_json is a string, parsing...")
                 try:
                     # Try parsing as-is first
                     credentials_dict = json.loads(credentials_json)
+                    logger.info("[DEBUG] Parsed credentials_json string directly")
                 except json.JSONDecodeError:
                     # If it fails, try to fix common escaping issues
                     # Railway may escape quotes: {\"key\": \"value\"}
@@ -65,21 +69,47 @@ class SheetsWriter:
                         # Last resort: evaluate literal (safe for credentials only)
                         credentials_dict = eval(cleaned)
             else:
+                logger.info("[DEBUG] credentials_json is already a dict")
                 credentials_dict = credentials_json
+
+            # DEBUG: Show private_key before any processing
+            if 'private_key' in credentials_dict:
+                logger.info(f"[DEBUG] SheetsWriter private_key BEFORE final check (first 200 chars): {repr(credentials_dict['private_key'][:200])}")
+                logger.info(f"[DEBUG] private_key contains literal backslash-n? {'\\n' in credentials_dict['private_key']}")
+                logger.info(f"[DEBUG] private_key contains actual newline? {chr(10) in credentials_dict['private_key']}")
 
             # CRITICAL: Ensure private_key has actual newlines, not literal \n
             # This handles both dict input and parsed JSON
             if 'private_key' in credentials_dict and isinstance(credentials_dict['private_key'], str):
                 if '\\n' in credentials_dict['private_key']:
-                    logger.info("Converting literal \\n to actual newlines in private_key")
+                    logger.info("[DEBUG] Found literal \\n in private_key, converting to actual newlines")
                     credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\n', '\n')
                     credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\r', '\r')
                     credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\t', '\t')
+                    logger.info(f"[DEBUG] After conversion, private_key (first 200 chars): {repr(credentials_dict['private_key'][:200])}")
+
+            # DEBUG: Show private_key after all processing
+            if 'private_key' in credentials_dict:
+                logger.info(f"[DEBUG] SheetsWriter private_key AFTER all processing (first 200 chars): {repr(credentials_dict['private_key'][:200])}")
+                logger.info(f"[DEBUG] private_key contains actual newline NOW? {chr(10) in credentials_dict['private_key']}")
 
             # Create temp file for credentials
             with NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
                 json.dump(credentials_dict, f)
                 temp_path = f.name
+
+            # DEBUG: Read back the temp file to see what was written
+            logger.info(f"[DEBUG] Temp file created at: {temp_path}")
+            with open(temp_path, 'r') as f:
+                file_content = f.read()
+                # Find private_key in the file
+                import re
+                match = re.search(r'"private_key"\s*:\s*"([^"]*)"', file_content)
+                if match:
+                    file_private_key = match.group(1)
+                    logger.info(f"[DEBUG] private_key IN TEMP FILE (first 200 chars): {repr(file_private_key[:200])}")
+                    logger.info(f"[DEBUG] private_key in file contains literal \\n? {'\\n' in file_private_key}")
+                    logger.info(f"[DEBUG] private_key in file contains actual newline? {chr(10) in file_private_key}")
 
             try:
                 credentials = ServiceAccountCredentials.from_json_keyfile_name(temp_path, scope)

@@ -64,9 +64,16 @@ def get_google_credentials() -> dict:
 
     credentials_str = settings.google_credentials_json
 
+    # DEBUG: Show first 300 chars of raw environment variable
+    logger.info(f"[DEBUG] Raw credentials_str (first 300 chars): {repr(credentials_str[:300])}")
+
     # Try parsing as-is first
     try:
-        return json.loads(credentials_str)
+        creds = json.loads(credentials_str)
+        logger.info("[DEBUG] Successfully parsed credentials directly (no fixes needed)")
+        if 'private_key' in creds:
+            logger.info(f"[DEBUG] private_key after direct parse (first 200 chars): {repr(creds['private_key'][:200])}")
+        return creds
     except json.JSONDecodeError as e:
         logger.warning(f"Failed to parse credentials JSON directly: {e}")
 
@@ -79,26 +86,26 @@ def get_google_credentials() -> dict:
 
         # Fix 2: Replace actual newlines with \n in JSON strings
         # This handles the case where private_key contains real newlines instead of \n
+        logger.info(f"[DEBUG] Before newline replacement, cleaned (first 300 chars): {repr(cleaned[:300])}")
         cleaned = cleaned.replace('\n', '\\n')
-
-        # Fix 3: Replace actual carriage returns with \r
         cleaned = cleaned.replace('\r', '\\r')
-
-        # Fix 4: Replace actual tabs with \t
         cleaned = cleaned.replace('\t', '\\t')
+        logger.info(f"[DEBUG] After newline replacement, cleaned (first 300 chars): {repr(cleaned[:300])}")
 
         try:
             creds = json.loads(cleaned)
-            logger.info("Successfully parsed credentials after fixing escape characters and newlines")
+            logger.info("[DEBUG] Successfully parsed credentials after fixing escape characters and newlines")
 
             # IMPORTANT: Restore actual newlines in private_key
             # After JSON parsing, \n in private_key is a literal backslash-n,
             # but it should be actual newlines for the key file
             if 'private_key' in creds:
+                logger.info(f"[DEBUG] private_key before restore (first 200 chars): {repr(creds['private_key'][:200])}")
                 creds['private_key'] = creds['private_key'].replace('\\n', '\n')
                 creds['private_key'] = creds['private_key'].replace('\\r', '\r')
                 creds['private_key'] = creds['private_key'].replace('\\t', '\t')
-                logger.info("Restored actual newlines in private_key")
+                logger.info("[DEBUG] Restored actual newlines in private_key")
+                logger.info(f"[DEBUG] private_key after restore (first 200 chars): {repr(creds['private_key'][:200])}")
 
             return creds
         except json.JSONDecodeError as e2:
