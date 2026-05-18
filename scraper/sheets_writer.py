@@ -31,7 +31,6 @@ class SheetsWriter:
             scope = ['https://spreadsheets.google.com/feeds',
                      'https://www.googleapis.com/auth/drive']
             import json
-            from tempfile import NamedTemporaryFile
 
             logger.info(f"[DEBUG] SheetsWriter received credentials_json type: {type(credentials_json)}")
 
@@ -96,45 +95,12 @@ class SheetsWriter:
                 logger.info(f"[DEBUG] SheetsWriter private_key AFTER all processing (first 200 chars): {repr(credentials_dict['private_key'][:200])}")
                 logger.info(f"[DEBUG] private_key contains actual newline NOW? {actual_newline in credentials_dict['private_key']}")
 
-            # Create temp file for credentials
-            with NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-                json.dump(credentials_dict, f)
-                temp_path = f.name
-
-            # CRITICAL FIX: json.dump() escapes actual newlines to \n strings
-            # We need to read the file back and fix the private_key field
-            logger.info(f"[DEBUG] Temp file created at: {temp_path}")
-
-            # Read the JSON file and parse it
-            with open(temp_path, 'r') as f:
-                file_content = f.read()
-
-            # Parse the JSON to get a dict
-            try:
-                import json
-                credentials_dict_from_file = json.loads(file_content)
-
-                # Fix private_key if it has literal \n instead of actual newlines
-                if 'private_key' in credentials_dict_from_file:
-                    if '\\n' in credentials_dict_from_file['private_key']:
-                        logger.info("[DEBUG] Found literal \\n in private_key from file, fixing...")
-                        credentials_dict_from_file['private_key'] = credentials_dict_from_file['private_key'].replace('\\n', '\n').replace('\\r', '\r').replace('\\t', '\t')
-
-                # Write the fixed JSON back to file
-                with open(temp_path, 'w') as f:
-                    json.dump(credentials_dict_from_file, f, ensure_ascii=False)
-
-                logger.info("[DEBUG] Fixed newlines in private_key in temp file")
-
-            except Exception as e:
-                logger.error(f"[DEBUG] Error fixing private_key: {e}")
-                # If fixing fails, try to continue with original file
-
-            try:
-                credentials = ServiceAccountCredentials.from_json_keyfile_name(temp_path, scope)
-                self.client = gspread.authorize(credentials)
-            finally:
-                os.unlink(temp_path)
+            # Use from_json_keyfile_dict to avoid file write/read issues
+            # This directly uses the dictionary without JSON serialization
+            logger.info("[DEBUG] Using from_json_keyfile_dict to create credentials")
+            credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+            self.client = gspread.authorize(credentials)
+            logger.info("[DEBUG] Credentials created successfully using dict method")
 
         elif credentials_path and os.path.exists(credentials_path):
             # Use credentials file (local development)
