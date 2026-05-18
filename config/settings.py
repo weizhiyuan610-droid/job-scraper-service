@@ -2,9 +2,12 @@
 Application settings and configuration
 """
 import os
+import logging
 from pydantic_settings import BaseSettings
 from typing import Optional
 import json
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -55,12 +58,33 @@ def get_google_credentials() -> dict:
     Returns:
         Credentials dictionary or None
     """
-    if settings.google_credentials_json:
+    if not settings.google_credentials_json:
+        logger.warning("GOOGLE_CREDENTIALS_JSON environment variable is not set")
+        return None
+
+    credentials_str = settings.google_credentials_json
+
+    # Try parsing as-is first
+    try:
+        return json.loads(credentials_str)
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse credentials JSON directly: {e}")
+
+        # Try fixing common escaping issues
+        import re
+        cleaned = credentials_str.strip()
+
+        # Remove extra escaping: {\"key\": \"value\"} → {"key": "value"}
+        cleaned = re.sub(r'\\"', '"', cleaned)
+
         try:
-            return json.loads(settings.google_credentials_json)
-        except json.JSONDecodeError:
+            creds = json.loads(cleaned)
+            logger.info("Successfully parsed credentials after fixing escape characters")
+            return creds
+        except json.JSONDecodeError as e2:
+            logger.error(f"Failed to parse credentials JSON after cleaning: {e2}")
+            logger.error(f"Credentials string (first 200 chars): {credentials_str[:200]}")
             return None
-    return None
 
 
 def validate_settings() -> list[str]:
