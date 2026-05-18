@@ -375,9 +375,6 @@ function showToast(message, type = 'info') {
  * Toggle between URL and text input modes
  */
 function setInputMode(mode) {
-    // Reset all states when switching modes
-    resetForm();
-
     const urlMode = document.getElementById('urlMode');
     const textMode = document.getElementById('textMode');
     const urlModeBtn = document.getElementById('urlModeBtn');
