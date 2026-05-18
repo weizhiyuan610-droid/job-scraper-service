@@ -74,9 +74,11 @@ class SheetsWriter:
 
             # DEBUG: Show private_key before any processing
             if 'private_key' in credentials_dict:
+                literal_newline = '\\n'
+                actual_newline = chr(10)
                 logger.info(f"[DEBUG] SheetsWriter private_key BEFORE final check (first 200 chars): {repr(credentials_dict['private_key'][:200])}")
-                logger.info(f"[DEBUG] private_key contains literal backslash-n? {'\\n' in credentials_dict['private_key']}")
-                logger.info(f"[DEBUG] private_key contains actual newline? {chr(10) in credentials_dict['private_key']}")
+                logger.info(f"[DEBUG] private_key contains literal backslash-n? {literal_newline in credentials_dict['private_key']}")
+                logger.info(f"[DEBUG] private_key contains actual newline? {actual_newline in credentials_dict['private_key']}")
 
             # CRITICAL: Ensure private_key has actual newlines, not literal \n
             # This handles both dict input and parsed JSON
@@ -90,8 +92,9 @@ class SheetsWriter:
 
             # DEBUG: Show private_key after all processing
             if 'private_key' in credentials_dict:
+                actual_newline = chr(10)
                 logger.info(f"[DEBUG] SheetsWriter private_key AFTER all processing (first 200 chars): {repr(credentials_dict['private_key'][:200])}")
-                logger.info(f"[DEBUG] private_key contains actual newline NOW? {chr(10) in credentials_dict['private_key']}")
+                logger.info(f"[DEBUG] private_key contains actual newline NOW? {actual_newline in credentials_dict['private_key']}")
 
             # Create temp file for credentials
             with NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
