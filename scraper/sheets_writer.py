@@ -67,6 +67,15 @@ class SheetsWriter:
             else:
                 credentials_dict = credentials_json
 
+            # CRITICAL: Ensure private_key has actual newlines, not literal \n
+            # This handles both dict input and parsed JSON
+            if 'private_key' in credentials_dict and isinstance(credentials_dict['private_key'], str):
+                if '\\n' in credentials_dict['private_key']:
+                    logger.info("Converting literal \\n to actual newlines in private_key")
+                    credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\n', '\n')
+                    credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\r', '\r')
+                    credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\t', '\t')
+
             # Create temp file for credentials
             with NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
                 json.dump(credentials_dict, f)
