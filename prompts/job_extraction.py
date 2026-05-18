@@ -23,7 +23,8 @@ Extract the following fields and return ONLY a JSON object (no other text):
   "target_year": "Target graduation year(s). Use comma-separated if multiple: e.g., '2025, 2026' or '2026' or 'Any'",
   "salary": "Salary range as shown on page (original text)",
   "description": "Complete job description (first 500 characters max)",
-  "preferred_major": ["major1", "major2"] (array of preferred majors, empty array if not specified)
+  "preferred_major": ["major1", "major2"] (array of preferred majors. Classify into: STEM, CS, Media, Art, Business, Finance, Law, Other. Add '-related' suffix if JD mentions 'related disciplines' or similar. Empty array if not specified),
+  "status": "Active (assume Active unless page explicitly says closed/expired/filled)"
 }}
 
 EXTRACTION RULES:
@@ -37,7 +38,18 @@ EXTRACTION RULES:
 8. Degree: Default to "Any" if not mentioned
 9. Apply link: Look for "Apply Now", "Apply here", "Application" buttons or links. Extract the complete URL. If not found, leave empty.
 10. Salary: Extract exact text if shown, leave as empty string if not mentioned
-11. If a field cannot be determined, use null or empty string/default value
+11. Preferred major classification:
+   - STEM: Water, Environment, Electronics, Civil, Mechanical, Chemical, Materials, Physics, Chemistry, Biology, Math, Statistics
+   - CS: Computer Science, Software Engineering, Information Technology, Data Science, AI, Machine Learning, Coding
+   - Media: Journalism, Communication, Media Studies, Marketing, PR, Advertising, Broadcasting
+   - Art: Design, Fine Arts, Music, Film, Photography, Creative Arts, Fashion
+   - Business: Business, Management, Marketing, HR, Economics, Accounting
+   - Finance: Finance, Investment, Banking, Economics, Accounting
+   - Law: Law, Legal Studies
+   - Other: Any other field not listed above
+   - Add '-related' suffix if job mentions "related disciplines", "related fields", "or similar"
+12. Status: Set to "Active" by default. Only set to "Inactive" if page explicitly says "closed", "expired", "filled", "no longer accepting applications"
+13. If a field cannot be determined, use null or empty string/default value
 
 IMPORTANT: Return ONLY the JSON object, no additional text or explanation."""
 
@@ -61,7 +73,8 @@ Required fields (JSON format):
   "target_year": "2025, 2026, 2027, or Any (comma-separated if multiple)",
   "salary": "string or empty",
   "description": "string (max 500 chars)",
-  "preferred_major": ["major1", "major2"]
+  "preferred_major": ["STEM", "CS", "Media", "Art", "Business", "Finance", "Law", "Other"] (classify majors, add '-related' if mentions related disciplines),
+  "status": "Active" (default Active, only Inactive if closed/expired/filled)
 }}
 
 Return JSON only, no other text."""

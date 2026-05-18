@@ -74,7 +74,8 @@ function populateForm(data) {
         'target_year': 'target_year',
         'salary': 'salary',
         'apply_link': 'apply_link',
-        'description': 'description'
+        'description': 'description',
+        'status': 'status'
     };
 
     // Fill form fields
@@ -91,6 +92,13 @@ function populateForm(data) {
                 element.value = data[value];
             }
         }
+    }
+
+    // Special handling for preferred_major (array field)
+    const majorElement = document.getElementById('preferred_major');
+    if (majorElement && data['preferred_major'] && Array.isArray(data['preferred_major'])) {
+        // Join array with comma for display
+        majorElement.value = data['preferred_major'].join(', ');
     }
 
     // Update confidence score
