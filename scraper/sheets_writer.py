@@ -179,10 +179,9 @@ class SheetsWriter:
             row_data = job.to_google_sheets_row()
 
             # Write to sheet using update to specify exact range (B-O columns)
-            # row_data[0] is empty for column A, row_data[1:] is columns B-O
-            col_start = 2  # Column B
-            col_end = len(row_data)  # Column O
-            cell_range = f"{row_number},{col_start}:{row_number},{col_end}"
+            # row_data[0] is empty for column A, row_data[1:] is columns B-O (14 columns)
+            # Range format: "B6:O6" for row 6
+            cell_range = f"B{row_number}:O{row_number}"
 
             self.worksheet.update(cell_range, [row_data[1:]], value_input_option='USER_ENTERED')
 
