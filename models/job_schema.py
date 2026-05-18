@@ -28,12 +28,18 @@ class JobExtraction(BaseModel):
     @classmethod
     def normalize_visa_sponsorship(cls, v: str) -> str:
         """Normalize visa sponsorship values"""
-        v_lower = v.lower().strip()
-        if any(word in v_lower for word in ['yes', 'available', 'provided', 'supported', 'sponsored']):
+        v_clean = v.lower().strip()
+
+        # Exact matches first (handle user-selected values)
+        if v_clean in ['yes', 'no', 'case by case', 'not mentioned']:
+            return v_clean.capitalize() if v_clean != 'case by case' else 'Case by case'
+
+        # Substring matches (handle AI-extracted variations)
+        if any(word in v_clean for word in ['yes', 'available', 'provided', 'supported', 'sponsored']):
             return 'Yes'
-        elif any(word in v_lower for word in ['no', 'not', 'unavailable', 'not provided']):
+        elif any(word in v_clean for word in ['no', 'unavailable']):
             return 'No'
-        elif any(word in v_lower for word in ['case', 'case by case', 'case-by-case', 'consider']):
+        elif any(word in v_clean for word in ['case', 'consider']):
             return 'Case by case'
         else:
             return 'Not mentioned'
