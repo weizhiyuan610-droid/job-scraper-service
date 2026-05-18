@@ -35,8 +35,9 @@ EXTRACTION RULES:
 6. Visa sponsorship: Set to "Yes" if page mentions "visa", "sponsorship", "work authorization", "work permit"
 7. Type: Default to "Full-time" if not specified
 8. Degree: Default to "Any" if not mentioned
-9. Salary: Extract exact text if shown, leave as empty string if not mentioned
-10. If a field cannot be determined, use null or empty string/default value
+9. Apply link: Look for "Apply Now", "Apply here", "Application" buttons or links. Extract the complete URL. If not found, leave empty.
+10. Salary: Extract exact text if shown, leave as empty string if not mentioned
+11. If a field cannot be determined, use null or empty string/default value
 
 IMPORTANT: Return ONLY the JSON object, no additional text or explanation."""
 

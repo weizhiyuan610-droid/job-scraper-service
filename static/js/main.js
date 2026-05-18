@@ -21,6 +21,9 @@ async function scrapeJob() {
         return;
     }
 
+    // Pre-fill apply link with the URL user entered
+    document.getElementById('apply_link').value = url;
+
     // Show loading state
     showLoading(true);
     updateLoadingMessage('正在访问网页...');
@@ -77,8 +80,16 @@ function populateForm(data) {
     // Fill form fields
     for (const [key, value] of Object.entries(fieldMap)) {
         const element = document.getElementById(key);
-        if (element && data[value]) {
-            element.value = data[value];
+        if (element) {
+            // Special handling for apply_link: keep user's URL if AI didn't find one
+            if (key === 'apply_link' && (!data[value] || data[value] === '')) {
+                // Keep the URL that was pre-filled
+                continue;
+            }
+            // Only set if data exists
+            if (data[value]) {
+                element.value = data[value];
+            }
         }
     }
 
