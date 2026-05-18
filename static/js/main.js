@@ -26,7 +26,7 @@ async function scrapeJob() {
 
     // Show loading state
     showLoading(true);
-    updateLoadingMessage('正在访问网页...');
+    updateLoadingMessage('Accessing webpage...');
 
     try {
         // Call scrape API
@@ -44,15 +44,15 @@ async function scrapeJob() {
             currentJobData = result.data;
             populateForm(currentJobData);
             showResult(true);
-            showToast('✅ 抓取成功！请检查信息', 'success');
+            showToast('✅ Successfully scraped! Please review the information', 'success');
         } else {
-            showToast('❌ 抓取失败：' + result.error, 'error');
+            showToast('❌ Scrape failed: ' + result.error, 'error');
             showLoading(false);
         }
 
     } catch (error) {
         console.error('Error:', error);
-        showToast('❌ 网络错误，请稍后重试', 'error');
+        showToast('❌ Network error, please try again', 'error');
         showLoading(false);
     }
 }
@@ -123,9 +123,9 @@ function getConfidenceClass(score) {
 /**
  * Save job to Google Sheets
  */
-async function saveJob() {
+async function saveJob(event) {
     if (!currentJobData) {
-        showToast('没有数据可保存', 'error');
+        showToast('No data to save', 'error');
         return;
     }
 
@@ -149,15 +149,26 @@ async function saveJob() {
     const required = ['company', 'title', 'location', 'visa_sponsorship', 'deadline', 'apply_link'];
     for (const field of required) {
         if (!formData[field]) {
-            showToast(`请填写必填字段: ${field}`, 'error');
+            showToast(`Please fill required field: ${field}`, 'error');
             return;
         }
     }
 
+    // Get the save button (from event or find it in DOM)
+    let saveBtn;
+    if (event && event.target) {
+        saveBtn = event.target;
+    } else {
+        // Fallback: find the button in the form
+        const buttons = document.querySelectorAll('button[onclick*="saveJob"]');
+        saveBtn = buttons[buttons.length - 1]; // Get the last save button
+    }
+
     // Show loading
-    const saveBtn = event.target;
-    saveBtn.disabled = true;
-    saveBtn.textContent = '⏳ 保存中...';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '⏳ Saving...';
+    }
 
     try {
         const response = await fetch('/api/save', {
@@ -173,22 +184,26 @@ async function saveJob() {
         if (result.success) {
             document.getElementById('rowNumber').textContent = result.row_number;
             showSuccess(true);
-            showToast('🎉 成功保存到 Google Sheets!', 'success');
+            showToast('🎉 Successfully saved to Google Sheets!', 'success');
         } else {
             if (result.duplicate_row) {
-                showToast('⚠️ 该职位已存在（第 ' + result.duplicate_row + ' 行）', 'warning');
+                showToast('⚠️ Job already exists (row ' + result.duplicate_row + ')', 'warning');
             } else {
-                showToast('❌ 保存失败：' + result.error, 'error');
+                showToast('❌ Save failed: ' + result.error, 'error');
             }
-            saveBtn.disabled = false;
-            saveBtn.textContent = '✅ 确认写入';
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '✅ Confirm & Save';
+            }
         }
 
     } catch (error) {
         console.error('Error:', error);
-        showToast('❌ 网络错误，请稍后重试', 'error');
-        saveBtn.disabled = false;
-        saveBtn.textContent = '✅ 确认写入';
+        showToast('❌ Network error, please try again', 'error');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = '✅ Confirm & Save';
+        }
     }
 }
 
@@ -204,13 +219,13 @@ function showLoading(show) {
     if (show) {
         loadingState.classList.remove('hidden');
         scrapeBtn.disabled = true;
-        scrapeBtn.textContent = '⏳ 抓取中...';
+        scrapeBtn.textContent = '⏳ Scraping...';
         resultState.classList.add('hidden');
         successState.classList.add('hidden');
     } else {
         loadingState.classList.add('hidden');
         scrapeBtn.disabled = false;
-        scrapeBtn.textContent = '🔍 开始抓取';
+        scrapeBtn.textContent = '🔍 Scrape Job';
     }
 }
 
@@ -234,7 +249,7 @@ function showResult(show) {
     if (show) {
         resultState.classList.remove('hidden');
         resultState.classList.add('fade-in');
-        scrapeBtn.textContent = '🔄 重新抓取';
+        scrapeBtn.textContent = '🔄 Scrape New Job';
     } else {
         resultState.classList.add('hidden');
     }
@@ -271,19 +286,19 @@ function resetForm() {
     // Reset button
     const scrapeBtn = document.getElementById('scrapeBtn');
     scrapeBtn.disabled = false;
-    scrapeBtn.textContent = '🔍 开始抓取';
+    scrapeBtn.textContent = '🔍 Scrape Job';
 
     // Clear data
     currentJobData = null;
 
-    showToast('已重置，可以抓取新职位', 'info');
+    showToast('Ready to scrape a new job', 'info');
 }
 
 /**
  * Cancel operation
  */
 function cancelForm() {
-    if (confirm('确定要取消吗？已抓取的数据将丢失。')) {
+    if (confirm('Are you sure you want to cancel? All scraped data will be lost.')) {
         resetForm();
     }
 }
@@ -356,7 +371,7 @@ async function extractFromText() {
     const url = document.getElementById('jobUrlForText').value.trim();
 
     if (!text) {
-        showToast('请粘贴职位描述文本内容', 'error');
+        showToast('Please paste job description text', 'error');
         return;
     }
 
@@ -367,7 +382,7 @@ async function extractFromText() {
 
     // Show loading state
     showLoading(true);
-    updateLoadingMessage('正在分析文本内容...');
+    updateLoadingMessage('Analyzing text content...');
 
     try {
         // Call extract-from-text API
@@ -385,15 +400,15 @@ async function extractFromText() {
             currentJobData = result.data;
             populateForm(currentJobData);
             showResult(true);
-            showToast('✅ 提取成功！请检查信息', 'success');
+            showToast('✅ Successfully extracted! Please review the information', 'success');
         } else {
-            showToast('❌ 提取失败：' + result.error, 'error');
+            showToast('❌ Extraction failed: ' + result.error, 'error');
             showLoading(false);
         }
 
     } catch (error) {
         console.error('Error:', error);
-        showToast('❌ 网络错误，请稍后重试', 'error');
+        showToast('❌ Network error, please try again', 'error');
         showLoading(false);
     }
 }

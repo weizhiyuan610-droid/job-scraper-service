@@ -309,24 +309,24 @@
                 <div class="flex flex-col sm:flex-row gap-4 mt-6 pt-6 border-t">
                     <button
                         type="button"
-                        onclick="saveJob()"
+                        onclick="saveJob(event)"
                         class="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white font-semibold py-3 px-6 rounded-lg hover:from-green-700 hover:to-green-800 transform hover:scale-[1.02] transition-all duration-200 shadow-lg"
                     >
-                        ✅ 确认写入
+                        ✅ Confirm & Save
                     </button>
                     <button
                         type="button"
                         onclick="resetForm()"
                         class="flex-1 bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg hover:bg-gray-300 transition-all duration-200"
                     >
-                        🔄 重新抓取
+                        🔄 Scrape New Job
                     </button>
                     <button
                         type="button"
                         onclick="cancelForm()"
                         class="flex-1 bg-red-100 text-red-700 font-semibold py-3 px-6 rounded-lg hover:bg-red-200 transition-all duration-200"
                     >
-                        ❌ 取消
+                        ❌ Cancel
                     </button>
                 </div>
             </form>
@@ -340,13 +340,13 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
                 </div>
-                <h3 class="text-2xl font-bold text-gray-900 mb-2">🎉 成功写入Google Sheets！</h3>
-                <p class="text-gray-600 mb-6">职位已添加到第 <span id="rowNumber" class="font-bold text-blue-600"></span> 行</p>
+                <h3 class="text-2xl font-bold text-gray-900 mb-2">🎉 Successfully Saved to Google Sheets!</h3>
+                <p class="text-gray-600 mb-6">Job added to row <span id="rowNumber" class="font-bold text-blue-600"></span></p>
                 <button
                     onclick="resetForm()"
                     class="bg-blue-600 text-white font-semibold py-3 px-8 rounded-lg hover:bg-blue-700 transition-all duration-200"
                 >
-                    继续抓取下一个职位
+                    Scrape Next Job
                 </button>
             </div>
         </div>
