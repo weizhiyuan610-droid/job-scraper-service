@@ -74,12 +74,22 @@ def get_google_credentials() -> dict:
         import re
         cleaned = credentials_str.strip()
 
-        # Remove extra escaping: {\"key\": \"value\"} → {"key": "value"}
+        # Fix 1: Remove extra escaping: {\"key\": \"value\"} → {"key": "value"}
         cleaned = re.sub(r'\\"', '"', cleaned)
+
+        # Fix 2: Replace actual newlines with \n in JSON strings
+        # This handles the case where private_key contains real newlines instead of \n
+        cleaned = cleaned.replace('\n', '\\n')
+
+        # Fix 3: Replace actual carriage returns with \r
+        cleaned = cleaned.replace('\r', '\\r')
+
+        # Fix 4: Replace actual tabs with \t
+        cleaned = cleaned.replace('\t', '\\t')
 
         try:
             creds = json.loads(cleaned)
-            logger.info("Successfully parsed credentials after fixing escape characters")
+            logger.info("Successfully parsed credentials after fixing escape characters and newlines")
             return creds
         except json.JSONDecodeError as e2:
             logger.error(f"Failed to parse credentials JSON after cleaning: {e2}")
