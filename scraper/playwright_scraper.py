@@ -12,13 +12,13 @@ logger = logging.getLogger(__name__)
 class PlaywrightScraper:
     """Scrape web pages using Playwright"""
 
-    def __init__(self, headless: bool = True, timeout: int = 30000):
+    def __init__(self, headless: bool = True, timeout: int = 60000):
         """
         Initialize scraper
 
         Args:
             headless: Run browser in headless mode
-            timeout: Page load timeout in milliseconds
+            timeout: Page load timeout in milliseconds (default: 60000ms = 60s)
         """
         self.headless = headless
         self.timeout = timeout
@@ -67,7 +67,7 @@ class PlaywrightScraper:
 
             # Navigate to URL
             logger.info(f"Navigating to: {url}")
-            await page.goto(url, wait_until="networkidle", timeout=self.timeout)
+            await page.goto(url, wait_until="domcontentloaded", timeout=self.timeout)
 
             # Wait for content to load
             await page.wait_for_timeout(2000)
