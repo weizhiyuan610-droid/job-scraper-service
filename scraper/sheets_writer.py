@@ -33,9 +33,29 @@ class SheetsWriter:
             import json
             from tempfile import NamedTemporaryFile
 
+            # Handle escaped JSON in environment variables
+            if isinstance(credentials_json, str):
+                try:
+                    # Try parsing as-is first
+                    credentials_dict = json.loads(credentials_json)
+                except json.JSONDecodeError:
+                    # If it fails, try to fix common escaping issues
+                    # Railway may escape quotes: {\"key\": \"value\"}
+                    import re
+                    cleaned = credentials_json.strip()
+                    # Remove extra escaping
+                    cleaned = re.sub(r'\"', '"', cleaned)
+                    try:
+                        credentials_dict = json.loads(cleaned)
+                    except:
+                        # Last resort: evaluate literal (safe for credentials only)
+                        credentials_dict = eval(cleaned)
+            else:
+                credentials_dict = credentials_json
+
             # Create temp file for credentials
             with NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-                json.dump(credentials_json, f)
+                json.dump(credentials_dict, f)
                 temp_path = f.name
 
             try:
