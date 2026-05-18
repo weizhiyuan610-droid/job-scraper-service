@@ -41,23 +41,23 @@ class JobExtraction(BaseModel):
     @field_validator('industry')
     @classmethod
     def normalize_industry(cls, v: str) -> str:
-        """Normalize industry values"""
+        """Normalize industry values to English"""
         industry_mapping = {
-            'consulting': '咨询',
-            'investment banking': '投行',
-            'private equity': '私募股权',
-            'venture capital': '风险投资',
-            'technology': '科技互联网',
-            'fintech': '金融科技',
-            'fashion': '快消',
-            'retail': '快消',
-            'consumer goods': '快消',
+            'consulting': 'Consulting',
+            'investment banking': 'Investment Banking',
+            'private equity': 'Private Equity',
+            'venture capital': 'Venture Capital',
+            'technology': 'Technology',
+            'fintech': 'Fintech',
+            'fashion': 'FMCG',
+            'retail': 'FMCG',
+            'consumer goods': 'FMCG',
         }
         v_lower = v.lower().strip()
         for key, value in industry_mapping.items():
             if key in v_lower:
                 return value
-        return '其他'
+        return 'Other'
 
     @field_validator('type')
     @classmethod
@@ -117,24 +117,23 @@ class JobData(JobExtraction):
         return v  # Return as-is if pattern doesn't match
 
     def to_google_sheets_row(self) -> list:
-        """Convert to Google Sheets row format"""
+        """
+        Convert to Google Sheets row format
+        Maps to columns B-O (ID in column A is not filled by this tool)
+        """
         return [
-            self.id,
-            self.company,
-            self.title,
-            self.industry,
-            self.location,
-            self.type,
-            self.apply_link,
-            self.deadline,
-            self.opened,
-            self.degree,
-            self.visa_sponsorship,
-            ', '.join(self.preferred_major) if self.preferred_major else '',
-            self.target_year,
-            self.salary,
-            self.description,
-            self.status,
-            self.priority,
-            'TRUE' if self.exclusive else 'FALSE',
+            self.company,                    # B列: Company
+            self.title,                      # C列: Title
+            self.industry,                   # D列: Industry
+            self.location,                   # E列: Location
+            self.salary,                     # F列: Salary
+            self.visa_sponsorship,           # G列: VisaSponsorship
+            self.deadline,                   # H列: Deadline
+            ', '.join(self.preferred_major) if self.preferred_major else '',  # I列: PreferredMajors
+            self.target_year,                # J列: TargetYear
+            self.degree,                     # K列: Degree
+            self.type,                       # L列: Type
+            self.description,                # M列: Description
+            self.apply_link,                 # N列: ApplicationUrl
+            self.status,                     # O列: Status
         ]
