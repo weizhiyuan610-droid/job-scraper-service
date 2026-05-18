@@ -122,6 +122,7 @@ class JobData(JobExtraction):
         Maps to columns B-O (ID in column A is not filled by this tool)
         """
         return [
+            '',                              # A列: ID (empty - not filled by this tool)
             self.company,                    # B列: Company
             self.title,                      # C列: Title
             self.industry,                   # D列: Industry
