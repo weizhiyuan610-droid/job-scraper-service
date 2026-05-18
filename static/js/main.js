@@ -261,6 +261,13 @@ function showResult(show) {
         resultState.classList.remove('hidden');
         resultState.classList.add('fade-in');
         scrapeBtn.textContent = '🔄 Scrape New Job';
+
+        // Reset save button state
+        const saveBtn = document.querySelector('#resultState button[onclick*="saveJob"]');
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = '✅ Confirm & Save';
+        }
     } else {
         resultState.classList.add('hidden');
         resultState.classList.remove('fade-in');
