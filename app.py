@@ -385,11 +385,18 @@ def internal_error(error):
 
 def main():
     """Run the Flask application"""
+    # Log all environment variables for debugging (without values)
+    logger.info("=== Environment Variables ===")
+    logger.info(f"GEMINI_API_KEY: {'✓ Set' if settings.gemini_api_key else '✗ Missing'}")
+    logger.info(f"GOOGLE_SHEET_ID: {'✓ Set' if settings.google_sheet_id else '✗ Missing'}")
+    logger.info(f"GOOGLE_CREDENTIALS_JSON: {'✓ Set' if settings.google_credentials_json else '✗ Missing'}")
+    logger.info(f"PORT: {settings.port}")
+
     # Validate settings
     missing = validate_settings()
     if missing:
         logger.warning(f"Missing configuration: {', '.join(missing)}")
-        logger.warning("Application may not function correctly")
+        logger.warning("Application will start but some features may not work")
 
     logger.info(f"Starting {settings.app_name} v{settings.app_version}")
     logger.info(f"Debug mode: {settings.debug}")
