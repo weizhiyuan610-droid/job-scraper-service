@@ -43,10 +43,24 @@ class SheetsWriter:
                     # Railway may escape quotes: {\"key\": \"value\"}
                     import re
                     cleaned = credentials_json.strip()
+
                     # Remove extra escaping
                     cleaned = re.sub(r'\"', '"', cleaned)
+
+                    # Replace actual newlines with \n in JSON strings
+                    cleaned = cleaned.replace('\n', '\\n')
+                    cleaned = cleaned.replace('\r', '\\r')
+                    cleaned = cleaned.replace('\t', '\\t')
+
                     try:
                         credentials_dict = json.loads(cleaned)
+
+                        # Restore actual newlines in private_key
+                        if 'private_key' in credentials_dict:
+                            credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\n', '\n')
+                            credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\r', '\r')
+                            credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\t', '\t')
+
                     except:
                         # Last resort: evaluate literal (safe for credentials only)
                         credentials_dict = eval(cleaned)
