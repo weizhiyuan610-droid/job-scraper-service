@@ -316,6 +316,24 @@ function cancelForm() {
 }
 
 /**
+ * Switch to URL mode after successful save
+ */
+function switchToUrlMode() {
+    resetForm();
+    setInputMode('url');
+    showToast('Ready to scrape from URL', 'info');
+}
+
+/**
+ * Switch to text mode after successful save
+ */
+function switchToTextMode() {
+    resetForm();
+    setInputMode('text');
+    showToast('Ready to extract from text', 'info');
+}
+
+/**
  * Show toast notification
  */
 function showToast(message, type = 'info') {
