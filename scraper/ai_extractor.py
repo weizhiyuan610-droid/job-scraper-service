@@ -69,6 +69,15 @@ class AIExtractor:
             # Parse JSON response
             try:
                 extracted_data = json.loads(response.text)
+
+                # Handle case where API returns a list instead of dict
+                if isinstance(extracted_data, list):
+                    if len(extracted_data) > 0:
+                        extracted_data = extracted_data[0]  # Take first item
+                        logger.warning("API returned a list, using first item")
+                    else:
+                        raise ValueError("API returned empty list")
+
                 logger.info(f"Successfully extracted job data: {extracted_data.get('title', 'Unknown')}")
 
                 return {
@@ -86,6 +95,12 @@ class AIExtractor:
                 if json_match:
                     try:
                         extracted_data = json.loads(json_match.group())
+                        # Handle case where extracted data is a list
+                        if isinstance(extracted_data, list):
+                            if len(extracted_data) > 0:
+                                extracted_data = extracted_data[0]
+                            else:
+                                raise ValueError("Extracted empty list")
                         return {
                             "success": True,
                             "data": extracted_data,
