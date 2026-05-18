@@ -138,6 +138,101 @@ def scrape():
         }), 500
 
 
+@app.route('/api/extract-from-text', methods=['POST'])
+def extract_from_text():
+    """
+    API endpoint to extract job data from pasted text
+
+    Expects JSON body:
+    {
+        "text": "Job description text content",
+        "url": "https://example.com (optional)"
+    }
+
+    Returns:
+    {
+        "success": true/false,
+        "data": { extracted job fields },
+        "error": "error message if failed"
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data or 'text' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing text in request body"
+            }), 400
+
+        text = data['text'].strip()
+        url = data.get('url', '').strip()
+
+        if len(text) < 50:
+            return jsonify({
+                "success": False,
+                "error": "Text content too short. Please provide complete job description."
+            }), 400
+
+        logger.info(f"Extracting from text (length: {len(text)} characters)")
+        if url:
+            logger.info(f"Source URL: {url}")
+
+        # Extract job data using AI (skip web scraping)
+        logger.info("Extracting job data with AI...")
+        extractor = AIExtractor(api_key=settings.gemini_api_key, model=settings.ai_model)
+        extract_result = extractor.extract_job_data(
+            text,
+            simple_mode=settings.ai_simple_mode
+        )
+
+        if not extract_result.get('success'):
+            return jsonify({
+                "success": False,
+                "error": f"Failed to extract data: {extract_result.get('error', 'Unknown error')}"
+            }), 400
+
+        job_data = extract_result['data']
+
+        # Validate with Pydantic
+        try:
+            job = JobData(**job_data)
+            job_dict = job.model_dump()
+
+            # Add metadata
+            if url:
+                job_dict['source_url'] = url
+            job_dict['scraped_at'] = ""  # No scraping timestamp for text input
+
+            # Calculate confidence score
+            if 'validation' in extract_result:
+                job_dict['confidence_score'] = extract_result['validation']['confidence_score']
+                job_dict['validation'] = extract_result['validation']
+            else:
+                job_dict['confidence_score'] = 85  # Default
+
+            logger.info(f"Successfully extracted: {job.company} - {job.title}")
+
+            return jsonify({
+                "success": True,
+                "data": job_dict,
+                "message": "Job data extracted successfully from text"
+            })
+
+        except Exception as e:
+            logger.error(f"Validation error: {str(e)}")
+            return jsonify({
+                "success": False,
+                "error": f"Data validation failed: {str(e)}"
+            }), 400
+
+    except Exception as e:
+        logger.error(f"Unexpected error in extract-from-text endpoint: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": f"Internal server error: {str(e)}"
+        }), 500
+
+
 @app.route('/api/save', methods=['POST'])
 def save():
     """

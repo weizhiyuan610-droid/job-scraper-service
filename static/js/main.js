@@ -327,6 +327,78 @@ function showToast(message, type = 'info') {
 }
 
 /**
+ * Toggle between URL and text input modes
+ */
+function setInputMode(mode) {
+    const urlMode = document.getElementById('urlMode');
+    const textMode = document.getElementById('textMode');
+    const urlModeBtn = document.getElementById('urlModeBtn');
+    const textModeBtn = document.getElementById('textModeBtn');
+
+    if (mode === 'url') {
+        urlMode.classList.remove('hidden');
+        textMode.classList.add('hidden');
+        urlModeBtn.className = 'px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white';
+        textModeBtn.className = 'px-4 py-2 rounded-lg font-semibold bg-gray-200 text-gray-700';
+    } else {
+        urlMode.classList.add('hidden');
+        textMode.classList.remove('hidden');
+        urlModeBtn.className = 'px-4 py-2 rounded-lg font-semibold bg-gray-200 text-gray-700';
+        textModeBtn.className = 'px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white';
+    }
+}
+
+/**
+ * Extract job information from pasted text
+ */
+async function extractFromText() {
+    const text = document.getElementById('jobText').value.trim();
+    const url = document.getElementById('jobUrlForText').value.trim();
+
+    if (!text) {
+        showToast('请粘贴职位描述文本内容', 'error');
+        return;
+    }
+
+    // Pre-fill apply link with the URL user entered (if any)
+    if (url) {
+        document.getElementById('apply_link').value = url;
+    }
+
+    // Show loading state
+    showLoading(true);
+    updateLoadingMessage('正在分析文本内容...');
+
+    try {
+        // Call extract-from-text API
+        const response = await fetch('/api/extract-from-text', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ text: text, url: url })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            currentJobData = result.data;
+            populateForm(currentJobData);
+            showResult(true);
+            showToast('✅ 提取成功！请检查信息', 'success');
+        } else {
+            showToast('❌ 提取失败：' + result.error, 'error');
+            showLoading(false);
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('❌ 网络错误，请稍后重试', 'error');
+        showLoading(false);
+    }
+}
+
+/**
  * Handle Enter key in URL input
  */
 document.addEventListener('DOMContentLoaded', function() {

@@ -42,10 +42,23 @@
                 <span class="bg-blue-100 text-blue-800 text-lg font-bold px-4 py-2 rounded-full mr-4">
                     📌 步骤1
                 </span>
-                <h2 class="text-2xl font-bold text-gray-900">输入职位链接</h2>
+                <h2 class="text-2xl font-bold text-gray-900">输入职位信息</h2>
             </div>
 
-            <div class="space-y-4">
+            <!-- Input Mode Toggle -->
+            <div class="mb-6">
+                <div class="flex space-x-4">
+                    <button onclick="setInputMode('url')" id="urlModeBtn" class="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white">
+                        🔗 URL模式
+                    </button>
+                    <button onclick="setInputMode('text')" id="textModeBtn" class="px-4 py-2 rounded-lg font-semibold bg-gray-200 text-gray-700">
+                        📝 文本模式
+                    </button>
+                </div>
+            </div>
+
+            <!-- URL Input Mode -->
+            <div id="urlMode" class="space-y-4">
                 <div>
                     <label for="jobUrl" class="block text-sm font-medium text-gray-700 mb-2">
                         职位网址 (URL)
@@ -55,7 +68,6 @@
                         id="jobUrl"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="https://www.mckinsey.com/careers/associate-2026"
-                        required
                     >
                     <p class="mt-2 text-sm text-gray-500">
                         💡 粘贴完整的职位链接（支持LinkedIn、公司官网、第三方招聘平台）
@@ -68,6 +80,46 @@
                     class="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold py-3 px-6 rounded-lg hover:from-blue-700 hover:to-blue-800 transform hover:scale-[1.02] transition-all duration-200 shadow-lg"
                 >
                     🔍 开始抓取
+                </button>
+            </div>
+
+            <!-- Text Input Mode -->
+            <div id="textMode" class="space-y-4 hidden">
+                <div>
+                    <label for="jobText" class="block text-sm font-medium text-gray-700 mb-2">
+                        职位描述 (JD) 文本内容
+                    </label>
+                    <textarea
+                        id="jobText"
+                        rows="10"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="请粘贴完整的职位描述（Job Description）文本内容..."
+                    ></textarea>
+                    <p class="mt-2 text-sm text-gray-500">
+                        💡 复制网页上的JD文本内容，粘贴到这里进行AI提取
+                    </p>
+                </div>
+
+                <div>
+                    <label for="jobUrlForText" class="block text-sm font-medium text-gray-700 mb-2">
+                        职位来源网址（可选）
+                    </label>
+                    <input
+                        type="url"
+                        id="jobUrlForText"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="https://www.mckinsey.com/careers/associate-2026"
+                    >
+                    <p class="mt-2 text-sm text-gray-500">
+                        💡 填写来源网址，方便后续申请（如果有的话）
+                    </p>
+                </div>
+
+                <button
+                    onclick="extractFromText()"
+                    class="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold py-3 px-6 rounded-lg hover:from-purple-700 hover:to-purple-800 transform hover:scale-[1.02] transition-all duration-200 shadow-lg"
+                >
+                    🤖 AI提取信息
                 </button>
             </div>
         </div>
