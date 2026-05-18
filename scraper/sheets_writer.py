@@ -104,27 +104,31 @@ class SheetsWriter:
             # CRITICAL FIX: json.dump() escapes actual newlines to \n strings
             # We need to read the file back and fix the private_key field
             logger.info(f"[DEBUG] Temp file created at: {temp_path}")
+
+            # Read the JSON file and parse it
             with open(temp_path, 'r') as f:
                 file_content = f.read()
 
-            # Replace literal \n in private_key value with actual newlines
-            # This regex finds "private_key": "..." and replaces \n with actual newlines only within the value
-            def fix_private_key_newlines(match):
-                private_key_value = match.group(1)
-                # Replace literal \n with actual newline
-                fixed_value = private_key_value.replace('\\n', '\n').replace('\\r', '\r').replace('\\t', '\t')
-                return f'"private_key": "{fixed_value}"'
+            # Parse the JSON to get a dict
+            try:
+                import json
+                credentials_dict_from_file = json.loads(file_content)
 
-            import re
-            # Pattern to match "private_key": "value" where value may contain escaped characters
-            pattern = r'"private_key"\s*:\s*"((?:[^"\\]|\\.)*)"'
-            fixed_content = re.sub(pattern, fix_private_key_newlines, file_content)
+                # Fix private_key if it has literal \n instead of actual newlines
+                if 'private_key' in credentials_dict_from_file:
+                    if '\\n' in credentials_dict_from_file['private_key']:
+                        logger.info("[DEBUG] Found literal \\n in private_key from file, fixing...")
+                        credentials_dict_from_file['private_key'] = credentials_dict_from_file['private_key'].replace('\\n', '\n').replace('\\r', '\r').replace('\\t', '\t')
 
-            # Write the fixed content back to the file
-            with open(temp_path, 'w') as f:
-                f.write(fixed_content)
+                # Write the fixed JSON back to file
+                with open(temp_path, 'w') as f:
+                    json.dump(credentials_dict_from_file, f, ensure_ascii=False)
 
-            logger.info("[DEBUG] Fixed newlines in private_key in temp file")
+                logger.info("[DEBUG] Fixed newlines in private_key in temp file")
+
+            except Exception as e:
+                logger.error(f"[DEBUG] Error fixing private_key: {e}")
+                # If fixing fails, try to continue with original file
 
             try:
                 credentials = ServiceAccountCredentials.from_json_keyfile_name(temp_path, scope)
