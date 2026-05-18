@@ -178,8 +178,13 @@ class SheetsWriter:
             job = JobData(**job_data)
             row_data = job.to_google_sheets_row()
 
-            # Write to sheet
-            self.worksheet.append_row(row_data, value_input_option='USER_ENTERED')
+            # Write to sheet using update to specify exact range (B-O columns)
+            # row_data[0] is empty for column A, row_data[1:] is columns B-O
+            col_start = 2  # Column B
+            col_end = len(row_data)  # Column O
+            cell_range = f"{row_number},{col_start}:{row_number},{col_end}"
+
+            self.worksheet.update(cell_range, [row_data[1:]], value_input_option='USER_ENTERED')
 
             logger.info(f"Successfully wrote job to row {row_number}: {job.title}")
 
