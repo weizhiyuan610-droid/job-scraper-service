@@ -20,7 +20,7 @@ Extract the following fields and return ONLY a JSON object (no other text):
   "opened": "Posting date in YYYY-MM-DD format, or empty string if not found",
   "degree": "Select one: Bachelor, Master, PhD, MBA, Any, Preferred",
   "visa_sponsorship": "Select one: Yes, No, Case by case, Not mentioned",
-  "target_year": "Target graduation year: 2025, 2026, 2027, or Any",
+  "target_year": "Target graduation year(s). Use comma-separated if multiple: e.g., '2025, 2026' or '2026' or 'Any'",
   "salary": "Salary range as shown on page (original text)",
   "description": "Complete job description (first 500 characters max)",
   "preferred_major": ["major1", "major2"] (array of preferred majors, empty array if not specified)
@@ -57,7 +57,7 @@ Required fields (JSON format):
   "opened": "YYYY-MM-DD or empty",
   "degree": "Bachelor/Master/PhD/MBA/Any/Preferred",
   "visa_sponsorship": "Yes/No/Case by case/Not mentioned",
-  "target_year": "2025/2026/2027/Any",
+  "target_year": "2025, 2026, 2027, or Any (comma-separated if multiple)",
   "salary": "string or empty",
   "description": "string (max 500 chars)",
   "preferred_major": ["major1", "major2"]
