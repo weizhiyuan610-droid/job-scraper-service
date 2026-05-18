@@ -90,6 +90,16 @@ def get_google_credentials() -> dict:
         try:
             creds = json.loads(cleaned)
             logger.info("Successfully parsed credentials after fixing escape characters and newlines")
+
+            # IMPORTANT: Restore actual newlines in private_key
+            # After JSON parsing, \n in private_key is a literal backslash-n,
+            # but it should be actual newlines for the key file
+            if 'private_key' in creds:
+                creds['private_key'] = creds['private_key'].replace('\\n', '\n')
+                creds['private_key'] = creds['private_key'].replace('\\r', '\r')
+                creds['private_key'] = creds['private_key'].replace('\\t', '\t')
+                logger.info("Restored actual newlines in private_key")
+
             return creds
         except json.JSONDecodeError as e2:
             logger.error(f"Failed to parse credentials JSON after cleaning: {e2}")
