@@ -279,6 +279,7 @@ function showSuccess(show) {
         successState.classList.add('fade-in');
     } else {
         successState.classList.add('hidden');
+        successState.classList.remove('fade-in');
     }
 }
 

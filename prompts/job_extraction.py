@@ -22,7 +22,7 @@ Extract the following fields and return ONLY a JSON object (no other text):
   "visa_sponsorship": "Select one: Yes, No, Case by case, Not mentioned",
   "target_year": "Target graduation year(s). Use comma-separated if multiple: e.g., '2025, 2026' or '2026' or 'Any'",
   "salary": "Salary range as shown on page (original text)",
-  "description": "Complete job description (first 500 characters max)",
+  "description": "Clean job description without company name prefix. Remove patterns like 'Company X is looking for/hiring/seeking'. Extract core responsibilities and requirements (first 500 characters max)",
   "preferred_major": ["major1", "major2"] (array of preferred majors. Classify into: STEM, CS, Media, Art, Business, Finance, Law, Other. Add '-related' suffix if JD mentions 'related disciplines' or similar. Empty array if not specified),
   "status": "Active (assume Active unless page explicitly says closed/expired/filled)"
 }}
@@ -50,6 +50,7 @@ EXTRACTION RULES:
    - Add '-related' suffix if job mentions "related disciplines", "related fields", "or similar"
 12. Status: Set to "Active" by default. Only set to "Inactive" if page explicitly says "closed", "expired", "filled", "no longer accepting applications"
 13. If a field cannot be determined, use null or empty string/default value
+14. Description: Clean up the text by removing company name prefixes and redundant phrases like "is looking for", "is hiring", "we are seeking". Focus on actual job responsibilities and requirements.
 
 IMPORTANT: Return ONLY the JSON object, no additional text or explanation."""
 
@@ -72,7 +73,7 @@ Required fields (JSON format):
   "visa_sponsorship": "Yes/No/Case by case/Not mentioned",
   "target_year": "2025, 2026, 2027, or Any (comma-separated if multiple)",
   "salary": "string or empty",
-  "description": "string (max 500 chars)",
+  "description": "Clean description without company prefix or 'looking for' phrases (max 500 chars)",
   "preferred_major": ["STEM", "CS", "Media", "Art", "Business", "Finance", "Law", "Other"] (classify majors, add '-related' if mentions related disciplines),
   "status": "Active" (default Active, only Inactive if closed/expired/filled)
 }}
