@@ -263,6 +263,7 @@ function showResult(show) {
         scrapeBtn.textContent = '🔄 Scrape New Job';
     } else {
         resultState.classList.add('hidden');
+        resultState.classList.remove('fade-in');
     }
 }
 
