@@ -124,6 +124,11 @@ function getConfidenceClass(score) {
  * Save job to Google Sheets
  */
 async function saveJob(event) {
+    // Prevent default form submission if event exists
+    if (event) {
+        event.preventDefault();
+    }
+
     if (!currentJobData) {
         showToast('No data to save', 'error');
         return;
@@ -201,6 +206,12 @@ async function saveJob(event) {
         console.error('Error:', error);
         showToast('❌ Network error, please try again', 'error');
         if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = '✅ Confirm & Save';
+        }
+    } finally {
+        // Always ensure button is re-enabled if we haven't shown success
+        if (saveBtn && !document.getElementById('successState').classList.contains('fade-in')) {
             saveBtn.disabled = false;
             saveBtn.textContent = '✅ Confirm & Save';
         }

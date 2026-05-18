@@ -145,9 +145,24 @@ class SheetsWriter:
         if not self.worksheet:
             raise ValueError("Worksheet not opened. Call open_spreadsheet first.")
 
-        # Find first empty row
-        col_values = self.worksheet.col_values(1)  # Get all values in column A
-        return len(col_values) + 1
+        # Get all records to find the first truly empty row
+        try:
+            # Get all data as records
+            records = self.worksheet.get_all_records()
+            # Find first row index that's completely empty or doesn't exist
+            # Add 2 because: 1 for header row, 1 for 0-index to 1-index conversion
+            return len(records) + 2
+        except Exception as e:
+            # Fallback: check column values
+            logger.warning(f"Error using get_all_records, using fallback: {e}")
+            # Get all rows and find first empty one
+            all_rows = self.worksheet.get_all_values()
+            # Find first row with no data in any column
+            for idx, row in enumerate(all_rows, start=1):
+                if not any(cell.strip() for cell in row):
+                    return idx
+            # If all rows have data, append to end
+            return len(all_rows) + 1
 
     def write_job(self, job_data: Dict) -> Dict:
         """
