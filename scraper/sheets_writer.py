@@ -181,7 +181,7 @@ class SheetsWriter:
             # Write to sheet
             self.worksheet.append_row(row_data, value_input_option='USER_ENTERED')
 
-            logger.info(f"Successfully wrote job to row {row_number}: {job.get('title', 'Unknown')}")
+            logger.info(f"Successfully wrote job to row {row_number}: {job.title}")
 
             return {
                 "success": True,
