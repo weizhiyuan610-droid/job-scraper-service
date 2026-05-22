@@ -53,13 +53,13 @@ def enrich_job_with_company_info(job_data: dict) -> dict:
         inference = get_company_inference()
         company_info_dict = inference.get_company_info(company_name, industry)
 
-        # Create CompanyInfo object and add to job data
+        # Create CompanyInfo object and add to job data as dict (Pydantic will validate)
         job_data['company_info'] = company_info_dict
 
         logger.info(f"Enriched {company_name} with company info: size={company_info_dict.get('size_category')}, tier={company_info_dict.get('tier')}")
 
     except Exception as e:
-        logger.error(f"Error enriching company info: {e}")
+        logger.error(f"Error enriching company info: {e}", exc_info=True)
         # Use default company info on error
         job_data['company_info'] = CompanyInfo().model_dump()
 

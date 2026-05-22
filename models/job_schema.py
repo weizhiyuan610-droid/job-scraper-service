@@ -1,7 +1,7 @@
 """
 Pydantic schemas for job data validation
 """
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List
 import re
 
@@ -264,6 +264,11 @@ class JobExtraction(BaseModel):
 
 class CompanyInfo(BaseModel):
     """Company information (from database or AI inference)"""
+    model_config = ConfigDict(
+        populate_by_name=True,
+        use_enum_values=False
+    )
+
     domain: Optional[str] = Field("", description="Company domain/website")
     size_category: Optional[str] = Field("Mid", description="Company size: Startup/Small/Mid/Large/Enterprise")
     employee_count: Optional[str] = Field("", description="Employee count range")
