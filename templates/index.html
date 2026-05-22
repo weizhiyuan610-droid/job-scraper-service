@@ -179,12 +179,34 @@
                             行业分类 <span class="text-red-500">*</span>
                         </label>
                         <select id="industry" class="job-input w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
-                            <option value="Consulting">Consulting</option>
-                            <option value="Investment Banking">Investment Banking</option>
-                            <option value="Technology">Technology</option>
-                            <option value="Fintech">Fintech</option>
-                            <option value="FMCG">FMCG</option>
-                            <option value="Other">Other</option>
+                            <optgroup label="金融与咨询">
+                                <option value="Consulting">Consulting (咨询)</option>
+                                <option value="Investment Banking">Investment Banking (投行)</option>
+                                <option value="Private Equity">Private Equity (私募)</option>
+                                <option value="Venture Capital">Venture Capital (风投)</option>
+                                <option value="Finance">Finance (金融)</option>
+                                <option value="Risk">Risk (风控)</option>
+                            </optgroup>
+                            <optgroup label="技术与工程">
+                                <option value="SDE">SDE (软件开发)</option>
+                                <option value="Data">Data (数据)</option>
+                                <option value="Engineering">Engineering (工程)</option>
+                                <option value="Quant">Quant (量化)</option>
+                                <option value="Technology">Technology (通用技术)</option>
+                                <option value="Fintech">Fintech (金融科技)</option>
+                            </optgroup>
+                            <optgroup label="商业与运营">
+                                <option value="Marketing">Marketing (市场)</option>
+                                <option value="Design">Design (设计)</option>
+                                <option value="Product Management">Product Management (产品)</option>
+                                <option value="Operation">Operation (运营)</option>
+                                <option value="Public Relations">Public Relations (公关)</option>
+                            </optgroup>
+                            <optgroup label="其他">
+                                <option value="Law">Law (法律)</option>
+                                <option value="FMCG">FMCG (快消)</option>
+                                <option value="Other">Other (其他)</option>
+                            </optgroup>
                         </select>
                     </div>
 
