@@ -278,6 +278,10 @@ class CompanyInfo(BaseModel):
     tier: Optional[str] = Field("Unknown", description="Company tier: Tier 1/2/3")
     company_website: Optional[str] = Field("", description="Company website URL")
 
+    # Metadata about data source
+    source: Optional[str] = Field("unknown", description="Data source: database/ai_inferred/ai_low_confidence/unknown")
+    confidence: Optional[int] = Field(0, description="Confidence score 0-100")
+
 
 class JobData(JobExtraction):
     """Complete job data ready for Google Sheets"""

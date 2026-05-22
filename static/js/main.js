@@ -109,6 +109,11 @@ function populateForm(data) {
         scoreElement.textContent = score + '%';
         scoreElement.className = 'text-2xl font-bold ' + getConfidenceClass(score);
     }
+
+    // Display company info if available
+    if (data.company_info) {
+        displayCompanyInfo(data.company_info);
+    }
 }
 
 /**
@@ -149,6 +154,23 @@ async function saveJob(event) {
         apply_link: document.getElementById('apply_link').value,
         description: document.getElementById('description').value,
     };
+
+    // Add company info if available
+    const companyCard = document.getElementById('companyInfoCard');
+    if (!companyCard.classList.contains('hidden')) {
+        formData.company_info = {
+            size_category: document.getElementById('display_size_category').textContent,
+            tier: document.getElementById('display_tier').textContent,
+            employee_count: document.getElementById('display_employee_count').textContent,
+            funding_stage: document.getElementById('display_funding_stage').textContent,
+            hq_location: document.getElementById('display_hq_location').textContent,
+            year_founded: document.getElementById('display_year_founded').textContent,
+            company_website: document.getElementById('display_company_website').textContent,
+            domain: document.getElementById('company_domain').value,
+            source: document.getElementById('companySourceBadge').textContent.includes('数据库') ? 'database' : 'user_edited',
+            confidence: 100
+        };
+    }
 
     // Validate required fields
     const required = ['company', 'title', 'location', 'visa_sponsorship', 'deadline', 'apply_link'];
@@ -302,6 +324,12 @@ function resetForm() {
     // Hide states
     showResult(false);
     showSuccess(false);
+
+    // Hide company info card
+    const companyCard = document.getElementById('companyInfoCard');
+    if (companyCard) {
+        companyCard.classList.add('hidden');
+    }
 
     // Reset button
     const scrapeBtn = document.getElementById('scrapeBtn');
@@ -465,3 +493,128 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+/**
+ * Display company information card
+ */
+function displayCompanyInfo(companyInfo) {
+    const card = document.getElementById('companyInfoCard');
+    if (!card) return;
+
+    // Show the card
+    card.classList.remove('hidden');
+
+    // Update display fields
+    document.getElementById('display_size_category').textContent = companyInfo.size_category || '-';
+    document.getElementById('display_tier').textContent = companyInfo.tier || '-';
+    document.getElementById('display_employee_count').textContent = companyInfo.employee_count || '-';
+    document.getElementById('display_funding_stage').textContent = companyInfo.funding_stage || '-';
+    document.getElementById('display_hq_location').textContent = companyInfo.hq_location || '-';
+    document.getElementById('display_year_founded').textContent = companyInfo.year_founded || '-';
+
+    // Update website link
+    const websiteLink = document.getElementById('display_company_website');
+    if (companyInfo.company_website) {
+        websiteLink.href = companyInfo.company_website;
+        websiteLink.textContent = companyInfo.company_website;
+    } else {
+        websiteLink.href = '#';
+        websiteLink.textContent = '-';
+    }
+
+    // Update source badge
+    const badge = document.getElementById('companySourceBadge');
+    updateSourceBadge(badge, companyInfo.source, companyInfo.confidence);
+
+    // Update edit fields
+    document.getElementById('edit_size_category').value = companyInfo.size_category || 'Mid';
+    document.getElementById('edit_tier').value = companyInfo.tier || 'Unknown';
+    document.getElementById('edit_employee_count').value = companyInfo.employee_count || '';
+    document.getElementById('edit_funding_stage').value = companyInfo.funding_stage || 'Private';
+    document.getElementById('edit_hq_location').value = companyInfo.hq_location || '';
+    document.getElementById('edit_year_founded').value = companyInfo.year_founded || '';
+    document.getElementById('edit_company_website').value = companyInfo.company_website || '';
+    document.getElementById('company_domain').value = companyInfo.domain || '';
+}
+
+/**
+ * Update source badge styling
+ */
+function updateSourceBadge(badge, source, confidence) {
+    const sourceConfig = {
+        'database': { text: '数据库 ✓', class: 'bg-green-100 text-green-800' },
+        'ai_inferred': { text: 'AI 推断', class: 'bg-blue-100 text-blue-800' },
+        'ai_low_confidence': { text: 'AI 推断 ⚠️', class: 'bg-yellow-100 text-yellow-800' },
+        'unknown': { text: '未知', class: 'bg-gray-100 text-gray-800' }
+    };
+
+    const config = sourceConfig[source] || sourceConfig['unknown'];
+    badge.textContent = config.text;
+    badge.className = `ml-2 px-2 py-1 text-xs font-medium rounded-full ${config.class}`;
+
+    // Add confidence if AI inferred
+    if (source.startsWith('ai') && confidence > 0) {
+        badge.textContent += ` (${confidence}%)`;
+    }
+}
+
+/**
+ * Toggle company info edit mode
+ */
+function toggleCompanyEdit() {
+    const display = document.getElementById('companyInfoDisplay');
+    const edit = document.getElementById('companyInfoEdit');
+
+    if (edit.classList.contains('hidden')) {
+        display.classList.add('hidden');
+        edit.classList.remove('hidden');
+    } else {
+        display.classList.remove('hidden');
+        edit.classList.add('hidden');
+    }
+}
+
+/**
+ * Save company info edits
+ */
+function saveCompanyEdit() {
+    // Get edited values
+    const editedInfo = {
+        size_category: document.getElementById('edit_size_category').value,
+        tier: document.getElementById('edit_tier').value,
+        employee_count: document.getElementById('edit_employee_count').value,
+        funding_stage: document.getElementById('edit_funding_stage').value,
+        hq_location: document.getElementById('edit_hq_location').value,
+        year_founded: document.getElementById('edit_year_founded').value,
+        company_website: document.getElementById('edit_company_website').value,
+        domain: document.getElementById('company_domain').value,
+        source: 'user_edited',
+        confidence: 100  // User edited = 100% confidence
+    };
+
+    // Update display
+    displayCompanyInfo(editedInfo);
+
+    // Update current job data
+    if (currentJobData) {
+        currentJobData.company_info = editedInfo;
+    }
+
+    // Switch back to display mode
+    toggleCompanyEdit();
+
+    showToast('公司信息已更新', 'success');
+}
+
+/**
+ * Cancel company info edits
+ */
+function cancelCompanyEdit() {
+    // Revert to original values from currentJobData
+    if (currentJobData && currentJobData.company_info) {
+        displayCompanyInfo(currentJobData.company_info);
+    }
+
+    // Switch back to display mode
+    toggleCompanyEdit();
+}

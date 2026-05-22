@@ -40,15 +40,20 @@ class CompanyInfoInference:
             industry: Job industry (helps with inference)
 
         Returns:
-            Dictionary with company info
+            Dictionary with company info including source and confidence
         """
         if not company_name:
-            return self._get_default_info()
+            info = self._get_default_info()
+            info["source"] = "unknown"
+            info["confidence"] = 0
+            return info
 
         # Check pre-built database first
         db_info = get_company_info(company_name)
         if db_info:
             logger.info(f"Found {company_name} in database")
+            db_info["source"] = "database"
+            db_info["confidence"] = 100
             return db_info
 
         # Check cache
@@ -59,6 +64,11 @@ class CompanyInfoInference:
         # Use AI to infer
         logger.info(f"Inferring info for {company_name} (industry: {industry})")
         inferred_info = self._infer_with_ai(company_name, industry)
+
+        # Add source metadata
+        confidence = self._calculate_confidence(inferred_info, company_name)
+        inferred_info["source"] = "ai_low_confidence" if confidence < 70 else "ai_inferred"
+        inferred_info["confidence"] = confidence
 
         # Cache the result
         self._inference_cache[company_name] = inferred_info
@@ -174,6 +184,43 @@ Return JSON only, no explanation."""
 
         return result
 
+    def _calculate_confidence(self, company_info: Dict, company_name: str) -> int:
+        """
+        Calculate confidence score for inferred company information
+
+        Args:
+            company_info: Inferred company information
+            company_name: Original company name
+
+        Returns:
+            Confidence score 0-100
+        """
+        score = 50  # Base score
+
+        # Add points for specific fields being filled
+        if company_info.get("domain"):
+            score += 15
+        if company_info.get("employee_count"):
+            score += 10
+        if company_info.get("year_founded") and company_info["year_founded"] != "Unknown":
+            score += 10
+        if company_info.get("hq_location") and company_info["hq_location"] != "Unknown":
+            score += 10
+
+        # Deduct points for generic/unknown values
+        if company_info.get("tier") == "Unknown":
+            score -= 10
+        if company_info.get("size_category") == "Mid":
+            score -= 5  # Mid is the default
+
+        # Check if company name looks specific (contains Inc, LLC, Ltd, etc.)
+        specific_suffixes = ["Inc", "LLC", "Ltd", "Corp", "Group", "Solutions", "Technologies"]
+        if any(suffix in company_name for suffix in specific_suffixes):
+            score += 10
+
+        # Cap at 100, minimum 10
+        return max(10, min(100, score))
+
     def _get_default_info(self, company_name: str = "Unknown") -> Dict:
         """Get default company info for unknown companies"""
         return {
@@ -185,7 +232,9 @@ Return JSON only, no explanation."""
             "hq_location": "Unknown",
             "year_founded": "",
             "tier": "Unknown",
-            "website": ""
+            "company_website": "",
+            "source": "unknown",
+            "confidence": 0
         }
 
 
