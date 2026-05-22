@@ -26,7 +26,7 @@ class CompanyInfoInference:
             raise ValueError("GEMINI_API_KEY is required for company inference")
 
         genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
 
         # Cache for inferred companies
         self._inference_cache = {}
