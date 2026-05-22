@@ -589,10 +589,16 @@ def update_headers():
         )
 
         # Calculate the range (e.g., A1:AC1)
-        import string
-        end_col = string.ascii_uppercase[len(headers) - 1]  # A=0, B=1, ..., AC=28
-        if len(headers) > 26:
-            end_col = f"A{string.ascii_uppercase[len(headers) - 27]}"
+        # We have 29 headers (A-AC), where AC = 28 (0-indexed)
+        # For 1-26: A-Z, for 27-52: AA-AZ, for 53-78: BA-BZ, etc.
+        num_cols = len(headers)
+        if num_cols <= 26:
+            end_col = chr(64 + num_cols)  # A=65, so A=1, B=2, ..., Z=26
+        else:
+            # For columns beyond Z: AA, AB, ..., AZ, BA, ...
+            first = chr(64 + (num_cols - 1) // 26)
+            second = chr(64 + ((num_cols - 1) % 26) + 1)
+            end_col = first + second
         cell_range = f"A1:{end_col}1"
 
         # Update headers
