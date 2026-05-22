@@ -24,6 +24,12 @@ Extract the following fields and return ONLY a JSON object (no other text):
   "salary": "Salary range as shown on page (original text)",
   "description": "Clean job description without company name prefix. Remove patterns like 'Company X is looking for/hiring/seeking'. Extract core responsibilities and requirements (first 500 characters max)",
   "preferred_major": ["major1", "major2"] (array of preferred majors. Classify into: STEM, CS, Media, Art, Business, Finance, Law, Other. Add '-related' suffix if JD mentions 'related disciplines' or similar. Empty array if not specified),
+  "skills_tags": ["skill1", "skill2", "skill3"] (array of technical/functional skills extracted from requirements. Extract 5-10 key skills. Include: programming languages, tools, frameworks, soft skills. Empty array if not found),
+  "department": "Department or team name (e.g., 'Engineering', 'Data Science', 'Product', 'Marketing', 'Sales', 'Finance'). Leave empty if not specified",
+  "job_level": "Select one based on title and requirements: Entry, Mid, Senior, Lead, Manager, Not specified",
+  "work_mode": "Select one based on location info: Remote, Hybrid, Onsite, Not specified",
+  "target_audience": "Select one based on requirements: Intern, New Grad, Experienced, Not specified",
+  "salary_range_normalized": "Normalized salary range in format 'minK-maxK' (e.g., '80K-120K'). Leave empty if salary not mentioned or cannot be parsed",
   "status": "Active (assume Active unless page explicitly says closed/expired/filled)"
 }}
 
@@ -97,9 +103,46 @@ EXTRACTION RULES:
    - Law: Law, Legal Studies
    - Other: Any other field not listed above
    - Add '-related' suffix if job mentions "related disciplines", "related fields", "or similar"
-12. Status: Set to "Active" by default. Only set to "Inactive" if page explicitly says "closed", "expired", "filled", "no longer accepting applications"
-13. If a field cannot be determined, use null or empty string/default value
-14. Description: Clean up the text by removing company name prefixes and redundant phrases like "is looking for", "is hiring", "we are seeking". Focus on actual job responsibilities and requirements.
+
+12. Skills Tags (IMPORTANT for recommendation system): Extract 5-10 key skills from requirements:
+   Programming Languages: Python, Java, JavaScript, C++, Go, Rust, Swift, Kotlin, TypeScript
+   Web/Frontend: React, Vue, Angular, HTML, CSS, Next.js, Tailwind
+   Backend: Node.js, Django, Flask, FastAPI, Spring Boot, Express
+   Data/AI: SQL, PostgreSQL, MongoDB, TensorFlow, PyTorch, Scikit-learn, Pandas, NumPy
+   Cloud: AWS, GCP, Azure, Docker, Kubernetes, Terraform
+   Tools: Git, Jenkins, CI/CD, Agile, Scrum, Jira
+   Soft Skills: Communication, Leadership, Problem-solving, Teamwork, Analytical
+
+13. Department: Look for team/department mentions (Engineering, Data Science, Product, Marketing, Sales, Finance, Operations, Design, Legal, HR)
+
+14. Job Level Classification:
+   - Entry: "Entry level", "Junior", "Associate", "New Grad", "0-2 years"
+   - Mid: "Mid-level", "3-5 years", "Intermediate"
+   - Senior: "Senior", "6+ years", "Sr."
+   - Lead: "Lead", "Principal", "Staff", "Tech Lead"
+   - Manager: "Manager", "Director", "VP", "Head of"
+   - Not specified: If no level mentioned
+
+15. Work Mode Classification:
+   - Remote: explicitly mentions "Remote", "Work from home", "WFO"
+   - Hybrid: mentions "Hybrid", "Flexible", "2-3 days in office"
+   - Onsite: mentions "On-site", "Office based", specific location only
+   - Not specified: If no work mode mentioned
+
+16. Target Audience Classification:
+   - Intern: mentions "Internship", "Intern", "Student", "Placement"
+   - New Grad: mentions "New Grad", "Recent Graduate", "Entry level", "0-2 years"
+   - Experienced: mentions "3+ years", "Experienced", "Professional"
+
+17. Salary Normalization: Convert salary to format "minK-maxK":
+   - "$80,000 - $120,000" → "80K-120K"
+   - "£50k-£70k" → "50K-70K"
+   - "Competitive" → ""
+   - Leave empty if cannot parse
+
+18. Status: Set to "Active" by default. Only set to "Inactive" if page explicitly says "closed", "expired", "filled", "no longer accepting applications"
+19. If a field cannot be determined, use null or empty string/default value
+20. Description: Clean up the text by removing company name prefixes and redundant phrases like "is looking for", "is hiring", "we are seeking". Focus on actual job responsibilities and requirements.
 
 IMPORTANT: Return ONLY the JSON object, no additional text or explanation."""
 
@@ -124,6 +167,12 @@ Required fields (JSON format):
   "salary": "string or empty",
   "description": "Clean description without company prefix or 'looking for' phrases (max 500 chars)",
   "preferred_major": ["STEM", "CS", "Media", "Art", "Business", "Finance", "Law", "Other"] (classify majors, add '-related' if mentions related disciplines),
+  "skills_tags": ["Python", "SQL", "AWS"] (extract 5-10 key skills),
+  "department": "department name",
+  "job_level": "Entry/Mid/Senior/Lead/Manager/Not specified",
+  "work_mode": "Remote/Hybrid/Onsite/Not specified",
+  "target_audience": "Intern/New Grad/Experienced/Not specified",
+  "salary_range_normalized": "80K-120K" or empty,
   "status": "Active" (default Active, only Inactive if closed/expired/filled)
 }}
 
@@ -140,5 +189,11 @@ INDUSTRY GUIDE:
 - Operation: operations, supply chain, logistics
 - Law: legal, paralegal, contracts
 - Public Relations: PR, communications, media relations
+
+SKILL EXAMPLES:
+- Languages: Python, Java, JavaScript, C++, Go, TypeScript, SQL
+- Frameworks: React, Vue, Django, Flask, Spring, TensorFlow
+- Cloud: AWS, GCP, Azure, Docker, Kubernetes
+- Tools: Git, CI/CD, Agile, Scrum
 
 Return JSON only, no other text."""

@@ -23,6 +23,14 @@ class JobExtraction(BaseModel):
     description: str = Field(default="", description="Job description")
     preferred_major: Optional[List[str]] = Field(default_factory=list, description="Preferred majors")
 
+    # New fields for smart recommendation
+    skills_tags: Optional[List[str]] = Field(default_factory=list, description="Extracted skill tags for matching")
+    department: Optional[str] = Field("", description="Department/Team")
+    job_level: Optional[str] = Field("Not specified", description="Job level: Entry/Mid/Senior/Lead/Principal")
+    work_mode: Optional[str] = Field("Not specified", description="Work mode: Remote/Hybrid/Onsite")
+    target_audience: Optional[str] = Field("Not specified", description="Target audience: New Grad/Intern/Experienced")
+    salary_range_normalized: Optional[str] = Field("", description="Normalized salary range for filtering")
+
     @field_validator('visa_sponsorship')
     @classmethod
     def normalize_visa_sponsorship(cls, v: str) -> str:
@@ -198,6 +206,61 @@ class JobExtraction(BaseModel):
         else:
             return 'Preferred'
 
+    @field_validator('job_level')
+    @classmethod
+    def normalize_job_level(cls, v: str) -> str:
+        """Normalize job level values"""
+        if not v or v.lower() == 'not specified':
+            return 'Not specified'
+
+        v_lower = v.lower().strip()
+        if any(word in v_lower for word in ['entry', 'junior', 'associate', 'grad']):
+            return 'Entry'
+        elif any(word in v_lower for word in ['mid', 'intermediate']):
+            return 'Mid'
+        elif any(word in v_lower for word in ['senior', 'sr.', 'sr ']):
+            return 'Senior'
+        elif any(word in v_lower for word in ['lead', 'principal', 'staff']):
+            return 'Lead'
+        elif any(word in v_lower for word in ['manager', 'head', 'director', 'vp']):
+            return 'Manager'
+        else:
+            return 'Not specified'
+
+    @field_validator('work_mode')
+    @classmethod
+    def normalize_work_mode(cls, v: str) -> str:
+        """Normalize work mode values"""
+        if not v or v.lower() == 'not specified':
+            return 'Not specified'
+
+        v_lower = v.lower().strip()
+        if 'remote' in v_lower:
+            return 'Remote'
+        elif 'hybrid' in v_lower:
+            return 'Hybrid'
+        elif 'onsite' in v_lower or 'on-site' in v_lower or 'office' in v_lower:
+            return 'Onsite'
+        else:
+            return 'Not specified'
+
+    @field_validator('target_audience')
+    @classmethod
+    def normalize_target_audience(cls, v: str) -> str:
+        """Normalize target audience values"""
+        if not v or v.lower() == 'not specified':
+            return 'Not specified'
+
+        v_lower = v.lower().strip()
+        if any(word in v_lower for word in ['intern', 'student', 'placement']):
+            return 'Intern'
+        elif any(word in v_lower for word in ['new grad', 'recent grad', 'entry', 'graduate']):
+            return 'New Grad'
+        elif any(word in v_lower for word in ['experienced', 'professional', 'mid', 'senior']):
+            return 'Experienced'
+        else:
+            return 'Not specified'
+
 
 class JobData(JobExtraction):
     """Complete job data ready for Google Sheets"""
@@ -226,7 +289,7 @@ class JobData(JobExtraction):
     def to_google_sheets_row(self) -> list:
         """
         Convert to Google Sheets row format
-        Maps to columns B-O (ID in column A is not filled by this tool)
+        Updated with new smart recommendation fields
         """
         return [
             '',                              # A列: ID (empty - not filled by this tool)
@@ -234,7 +297,7 @@ class JobData(JobExtraction):
             self.title,                      # C列: Title
             self.industry,                   # D列: Industry
             self.location,                   # E列: Location
-            self.salary,                     # F列: Salary
+            self.salary,                     # F列: Salary (original)
             self.visa_sponsorship,           # G列: VisaSponsorship
             self.deadline,                   # H列: Deadline
             ', '.join(self.preferred_major) if self.preferred_major else '',  # I列: PreferredMajors
@@ -244,4 +307,11 @@ class JobData(JobExtraction):
             self.description,                # M列: Description
             self.apply_link,                 # N列: ApplicationUrl
             self.status,                     # O列: Status
+            # New fields for smart recommendation
+            ', '.join(self.skills_tags) if self.skills_tags else '',  # P列: Skills
+            self.department,                 # Q列: Department
+            self.job_level,                  # R列: Job Level
+            self.work_mode,                  # S列: Work Mode
+            self.target_audience,            # T列: Target Audience
+            self.salary_range_normalized,    # U列: Salary Range (normalized)
         ]
