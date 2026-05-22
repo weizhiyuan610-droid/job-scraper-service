@@ -138,6 +138,140 @@ def scrape():
         }), 500
 
 
+@app.route('/api/scrape-batch', methods=['POST'])
+def scrape_batch():
+    """
+    API endpoint to scrape multiple job postings in parallel
+
+    Expects JSON body:
+    {
+        "urls": ["url1", "url2", "url3"]
+    }
+
+    Returns:
+    {
+        "success": true/false,
+        "results": [{ extracted job data for each URL }],
+        "errors": ["error messages"]
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data or 'urls' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Missing URLs in request body"
+            }), 400
+
+        urls = data['urls']
+        if not isinstance(urls, list):
+            return jsonify({
+                "success": False,
+                "error": "URLs must be a list"
+            }), 400
+
+        if len(urls) == 0:
+            return jsonify({
+                "success": False,
+                "error": "URLs list is empty"
+            }), 400
+
+        if len(urls) > 20:
+            return jsonify({
+                "success": False,
+                "error": "Maximum 20 URLs allowed per batch"
+            }), 400
+
+        logger.info(f"Batch scraping {len(urls)} URLs...")
+
+        # Import the batch scrape function
+        from scraper.playwright_scraper import scrape_multiple_sync
+
+        # Step 1: Scrape all web pages
+        logger.info("Step 1: Scraping web pages in parallel...")
+        scrape_results = scrape_multiple_sync(urls, headless=settings.headless_browser)
+
+        # Step 2: Extract job data using AI for each successful scrape
+        logger.info("Step 2: Extracting job data with AI...")
+        extractor = AIExtractor(api_key=settings.gemini_api_key, model=settings.ai_model)
+
+        results = []
+        errors = []
+
+        for i, scrape_result in enumerate(scrape_results):
+            url = urls[i]
+
+            if not scrape_result.get('success'):
+                errors.append({
+                    "url": url,
+                    "error": f"Scraping failed: {scrape_result.get('error', 'Unknown error')}"
+                })
+                continue
+
+            page_content = scrape_result['content']
+            logger.info(f"Processing URL {i+1}/{len(urls)}: {url}")
+
+            # Extract job data using AI
+            extract_result = extractor.extract_job_data(
+                page_content,
+                simple_mode=settings.ai_simple_mode
+            )
+
+            if not extract_result.get('success'):
+                errors.append({
+                    "url": url,
+                    "error": f"AI extraction failed: {extract_result.get('error', 'Unknown error')}"
+                })
+                continue
+
+            job_data = extract_result['data']
+
+            # Validate with Pydantic
+            try:
+                job = JobData(**job_data)
+                job_dict = job.model_dump()
+
+                # Add metadata
+                job_dict['source_url'] = url
+                job_dict['scraped_at'] = scrape_result.get('metadata', {}).get('timestamp', '')
+
+                # Calculate confidence score
+                if 'validation' in extract_result:
+                    job_dict['confidence_score'] = extract_result['validation']['confidence_score']
+                    job_dict['validation'] = extract_result['validation']
+                else:
+                    job_dict['confidence_score'] = 85
+
+                logger.info(f"Successfully extracted: {job.company} - {job.title}")
+                results.append(job_dict)
+
+            except Exception as e:
+                logger.error(f"Validation error for {url}: {str(e)}")
+                errors.append({
+                    "url": url,
+                    "error": f"Validation failed: {str(e)}"
+                })
+
+        return jsonify({
+            "success": True,
+            "results": results,
+            "errors": errors,
+            "summary": {
+                "total": len(urls),
+                "successful": len(results),
+                "failed": len(errors)
+            },
+            "message": f"Batch processing complete: {len(results)} successful, {len(errors)} failed"
+        })
+
+    except Exception as e:
+        logger.error(f"Unexpected error in scrape-batch endpoint: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": f"Internal server error: {str(e)}"
+        }), 500
+
+
 @app.route('/api/extract-from-text', methods=['POST'])
 def extract_from_text():
     """

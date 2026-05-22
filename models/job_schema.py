@@ -48,6 +48,7 @@ class JobExtraction(BaseModel):
     def normalize_industry(cls, v: str) -> str:
         """Normalize industry values to English"""
         industry_mapping = {
+            # Existing categories
             'consulting': 'Consulting',
             'investment banking': 'Investment Banking',
             'private equity': 'Private Equity',
@@ -57,6 +58,107 @@ class JobExtraction(BaseModel):
             'fashion': 'FMCG',
             'retail': 'FMCG',
             'consumer goods': 'FMCG',
+
+            # New categories
+            # Software / Tech roles
+            'software development': 'SDE',
+            'software engineer': 'SDE',
+            'sde': 'SDE',
+            'backend': 'SDE',
+            'frontend': 'SDE',
+            'full stack': 'SDE',
+            'full-stack': 'SDE',
+            'web development': 'SDE',
+            'app development': 'SDE',
+
+            # Data roles
+            'data science': 'Data',
+            'data scientist': 'Data',
+            'data analyst': 'Data',
+            'data engineering': 'Data',
+            'analytics': 'Data',
+            'machine learning': 'Data',
+            'artificial intelligence': 'Data',
+            'ai': 'Data',
+            'ml': 'Data',
+
+            # Engineering (non-software)
+            'engineering': 'Engineering',
+            'mechanical engineering': 'Engineering',
+            'electrical engineering': 'Engineering',
+            'civil engineering': 'Engineering',
+            'chemical engineering': 'Engineering',
+            'biomedical engineering': 'Engineering',
+            'hardware engineering': 'Engineering',
+
+            # Quant / Finance
+            'quantitative': 'Quant',
+            'quant': 'Quant',
+            'quantitative finance': 'Quant',
+            'quantitative research': 'Quant',
+            'trading': 'Quant',
+            'algorithmic trading': 'Quant',
+
+            # Risk
+            'risk management': 'Risk',
+            'risk analyst': 'Risk',
+            'compliance': 'Risk',
+            'credit risk': 'Risk',
+            'market risk': 'Risk',
+
+            # Finance (general)
+            'finance': 'Finance',
+            'financial analyst': 'Finance',
+            'corporate finance': 'Finance',
+            'financial planning': 'Finance',
+
+            # Marketing
+            'marketing': 'Marketing',
+            'digital marketing': 'Marketing',
+            'brand': 'Marketing',
+            'social media': 'Marketing',
+            'content marketing': 'Marketing',
+            'growth marketing': 'Marketing',
+
+            # Design
+            'design': 'Design',
+            'ux designer': 'Design',
+            'ui designer': 'Design',
+            'ux/ui': 'Design',
+            'product design': 'Design',
+            'graphic design': 'Design',
+            'visual design': 'Design',
+            'user experience': 'Design',
+
+            # Product Management
+            'product management': 'Product Management',
+            'product manager': 'Product Management',
+            'pm': 'Product Management',
+            'product owner': 'Product Management',
+            'agile': 'Product Management',
+            'scrum': 'Product Management',
+
+            # Operations
+            'operation': 'Operation',
+            'operations': 'Operation',
+            'supply chain': 'Operation',
+            'logistics': 'Operation',
+            'business operations': 'Operation',
+
+            # Law / Legal
+            'legal': 'Law',
+            'law': 'Law',
+            'paralegal': 'Law',
+            'compliance': 'Law',
+            'contract': 'Law',
+
+            # Public Relations
+            'public relation': 'Public Relations',
+            'pr': 'Public Relations',
+            'communication': 'Public Relations',
+            'communications': 'Public Relations',
+            'external affairs': 'Public Relations',
+            'media relation': 'Public Relations',
         }
         v_lower = v.lower().strip()
         for key, value in industry_mapping.items():

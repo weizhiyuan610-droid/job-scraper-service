@@ -1,0 +1,12 @@
+services:
+  # Type: web
+  name: job-scraper-service
+  env: docker
+  plan: free
+  buildCommand: ""
+  startCommand: "python app.py"
+  envVars:
+    - key: PORT
+      value: 5000
+    - key: PYTHON_VERSION
+      value: 3.11

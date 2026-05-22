@@ -164,3 +164,25 @@ def scrape_page_sync(url: str, headless: bool = True) -> dict:
             await scraper.close_browser()
 
     return asyncio.run(_scrape())
+
+
+def scrape_multiple_sync(urls: list, headless: bool = True) -> list:
+    """
+    Synchronous wrapper for scrape_multiple
+
+    Args:
+        urls: List of URLs to scrape
+        headless: Run in headless mode
+
+    Returns:
+        List of scrape results
+    """
+    async def _scrape():
+        scraper = PlaywrightScraper(headless=headless)
+        try:
+            results = await scraper.scrape_multiple(urls)
+            return results
+        finally:
+            await scraper.close_browser()
+
+    return asyncio.run(_scrape())

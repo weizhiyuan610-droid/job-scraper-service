@@ -52,3 +52,5 @@ config/google_credentials.json
 *.json
 !package.json
 !railway.json
+GOOGLE_CREDENTIALS_FOR_RENDER.txt
+RENDER_ENV_VARS.txt
