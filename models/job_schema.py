@@ -340,7 +340,7 @@ class JobData(JobExtraction):
             self.work_mode,                  # S列: Work Mode
             self.target_audience,            # T列: Target Audience
             self.salary_range_normalized,    # U列: Salary Range (normalized)
-            # Company info fields (new columns V-AC)
+            # Company info fields (new columns V-AD)
             company_info.size_category,      # V列: Company Size
             company_info.employee_count,     # W列: Employee Count
             company_info.funding_stage,      # X列: Funding Stage
@@ -348,4 +348,5 @@ class JobData(JobExtraction):
             company_info.year_founded,       # Z列: Year Founded
             company_info.tier,               # AA列: Company Tier
             company_info.company_website,    # AB列: Company Website
+            company_info.domain,             # AC列: Company Domain
         ]

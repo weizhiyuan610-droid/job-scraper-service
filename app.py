@@ -551,6 +551,70 @@ def health():
     }), 200
 
 
+@app.route('/api/update-headers', methods=['POST'])
+def update_headers():
+    """
+    Update Google Sheet headers
+    This endpoint updates the header row to include all new columns
+
+    Returns:
+        {
+            "success": true/false,
+            "message": "Headers updated successfully"
+        }
+    """
+    try:
+        # Define the new headers
+        headers = [
+            'ID', 'Company', 'Title', 'Industry', 'Location', 'Salary',
+            'VisaSponsorship', 'Deadline', 'PreferredMajors', 'TargetYear',
+            'Degree', 'Type', 'Description', 'ApplicationUrl', 'Status',
+            'Skills', 'Department', 'JobLevel', 'WorkMode', 'TargetAudience',
+            'SalaryRange', 'CompanySize', 'EmployeeCount', 'FundingStage',
+            'CompanyHQ', 'YearFounded', 'CompanyTier', 'CompanyWebsite',
+            'CompanyDomain',
+        ]
+
+        credentials = get_google_credentials()
+        if not credentials:
+            return jsonify({
+                "success": False,
+                "error": "Google credentials not configured"
+            }), 500
+
+        writer = SheetsWriter(credentials_json=credentials)
+        writer.open_spreadsheet(
+            sheet_id=settings.google_sheet_id,
+            sheet_name=settings.google_sheet_name
+        )
+
+        # Calculate the range (e.g., A1:AC1)
+        import string
+        end_col = string.ascii_uppercase[len(headers) - 1]  # A=0, B=1, ..., AC=28
+        if len(headers) > 26:
+            end_col = f"A{string.ascii_uppercase[len(headers) - 27]}"
+        cell_range = f"A1:{end_col}1"
+
+        # Update headers
+        writer.worksheet.update(cell_range, [headers], value_input_option='USER_ENTERED')
+
+        logger.info(f"Updated Google Sheet headers to {len(headers)} columns")
+
+        return jsonify({
+            "success": True,
+            "message": f"Headers updated to {len(headers)} columns",
+            "headers": headers,
+            "range": cell_range
+        })
+
+    except Exception as e:
+        logger.error(f"Error updating headers: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 @app.errorhandler(404)
 def not_found(error):
     """Handle 404 errors"""

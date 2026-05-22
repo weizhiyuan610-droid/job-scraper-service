@@ -73,6 +73,14 @@ def get_google_credentials() -> dict:
         logger.info("[DEBUG] Successfully parsed credentials directly (no fixes needed)")
         if 'private_key' in creds:
             logger.info(f"[DEBUG] private_key after direct parse (first 200 chars): {repr(creds['private_key'][:200])}")
+            # Fix literal backslash-n to actual newlines
+            while '\\n' in creds['private_key']:
+                creds['private_key'] = creds['private_key'].replace('\\n', '\n')
+            while '\\r' in creds['private_key']:
+                creds['private_key'] = creds['private_key'].replace('\\r', '\r')
+            while '\\t' in creds['private_key']:
+                creds['private_key'] = creds['private_key'].replace('\\t', '\t')
+            logger.info(f"[DEBUG] private_key after newline fix (first 200 chars): {repr(creds['private_key'][:200])}")
         return creds
     except json.JSONDecodeError as e:
         logger.warning(f"Failed to parse credentials JSON directly: {e}")
@@ -97,13 +105,17 @@ def get_google_credentials() -> dict:
             logger.info("[DEBUG] Successfully parsed credentials after fixing escape characters and newlines")
 
             # IMPORTANT: Restore actual newlines in private_key
-            # After JSON parsing, \n in private_key is a literal backslash-n,
+            # After JSON parsing, \\n in private_key is a literal backslash-n,
             # but it should be actual newlines for the key file
             if 'private_key' in creds:
                 logger.info(f"[DEBUG] private_key before restore (first 200 chars): {repr(creds['private_key'][:200])}")
-                creds['private_key'] = creds['private_key'].replace('\\n', '\n')
-                creds['private_key'] = creds['private_key'].replace('\\r', '\r')
-                creds['private_key'] = creds['private_key'].replace('\\t', '\t')
+                # Use a loop to handle double-escaped newlines
+                while '\\n' in creds['private_key']:
+                    creds['private_key'] = creds['private_key'].replace('\\n', '\n')
+                while '\\r' in creds['private_key']:
+                    creds['private_key'] = creds['private_key'].replace('\\r', '\r')
+                while '\\t' in creds['private_key']:
+                    creds['private_key'] = creds['private_key'].replace('\\t', '\t')
                 logger.info("[DEBUG] Restored actual newlines in private_key")
                 logger.info(f"[DEBUG] private_key after restore (first 200 chars): {repr(creds['private_key'][:200])}")
 
