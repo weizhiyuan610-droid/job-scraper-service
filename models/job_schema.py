@@ -262,12 +262,27 @@ class JobExtraction(BaseModel):
             return 'Not specified'
 
 
+class CompanyInfo(BaseModel):
+    """Company information (from database or AI inference)"""
+    domain: Optional[str] = Field("", description="Company domain/website")
+    size_category: Optional[str] = Field("Mid", description="Company size: Startup/Small/Mid/Large/Enterprise")
+    employee_count: Optional[str] = Field("", description="Employee count range")
+    funding_stage: Optional[str] = Field("Private", description="Funding stage: Public/Private/Series A/B/C/etc")
+    hq_location: Optional[str] = Field("", description="Headquarters location")
+    year_founded: Optional[str] = Field("", description="Year company was founded")
+    tier: Optional[str] = Field("Unknown", description="Company tier: Tier 1/2/3")
+    company_website: Optional[str] = Field("", description="Company website URL")
+
+
 class JobData(JobExtraction):
     """Complete job data ready for Google Sheets"""
     id: Optional[int] = Field(None, description="Job ID (auto-generated)")
     status: str = Field(default="Active", description="Job status")
     priority: str = Field(default="Medium", description="Job priority level")
     exclusive: bool = Field(default=False, description="Is this an exclusive opportunity?")
+
+    # Company information (enriched from database/AI)
+    company_info: Optional[CompanyInfo] = Field(default_factory=CompanyInfo, description="Enriched company information")
 
     @field_validator('deadline')
     @classmethod
@@ -289,8 +304,10 @@ class JobData(JobExtraction):
     def to_google_sheets_row(self) -> list:
         """
         Convert to Google Sheets row format
-        Updated with new smart recommendation fields
+        Updated with smart recommendation fields and company info
         """
+        company_info = self.company_info or CompanyInfo()
+
         return [
             '',                              # A列: ID (empty - not filled by this tool)
             self.company,                    # B列: Company
@@ -307,11 +324,19 @@ class JobData(JobExtraction):
             self.description,                # M列: Description
             self.apply_link,                 # N列: ApplicationUrl
             self.status,                     # O列: Status
-            # New fields for smart recommendation
+            # Smart recommendation fields
             ', '.join(self.skills_tags) if self.skills_tags else '',  # P列: Skills
             self.department,                 # Q列: Department
             self.job_level,                  # R列: Job Level
             self.work_mode,                  # S列: Work Mode
             self.target_audience,            # T列: Target Audience
             self.salary_range_normalized,    # U列: Salary Range (normalized)
+            # Company info fields (new columns V-AC)
+            company_info.size_category,      # V列: Company Size
+            company_info.employee_count,     # W列: Employee Count
+            company_info.funding_stage,      # X列: Funding Stage
+            company_info.hq_location,        # Y列: Company HQ
+            company_info.year_founded,       # Z列: Year Founded
+            company_info.tier,               # AA列: Company Tier
+            company_info.company_website,    # AB列: Company Website
         ]

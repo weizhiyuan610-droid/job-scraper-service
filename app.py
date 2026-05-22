@@ -7,7 +7,8 @@ import logging
 from flask import Flask, render_template, request, jsonify
 from scraper.playwright_scraper import scrape_page_sync
 from scraper import AIExtractor, SheetsWriter
-from models import JobData
+from scraper.company_inference import get_company_inference
+from models import JobData, CompanyInfo
 from config import settings, validate_settings, get_google_credentials
 
 # Configure logging
@@ -27,6 +28,42 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max request size
 def index():
     """Render main page"""
     return render_template('index.html')
+
+
+def enrich_job_with_company_info(job_data: dict) -> dict:
+    """
+    Enrich job data with company information from database or AI inference
+
+    Args:
+        job_data: Job data dictionary with at least 'company' and 'industry' fields
+
+    Returns:
+        Updated job data with company_info field
+    """
+    try:
+        company_name = job_data.get('company', '')
+        industry = job_data.get('industry', '')
+
+        if not company_name:
+            # No company info available, use default
+            job_data['company_info'] = CompanyInfo().model_dump()
+            return job_data
+
+        # Get company info from database or AI inference
+        inference = get_company_inference()
+        company_info_dict = inference.get_company_info(company_name, industry)
+
+        # Create CompanyInfo object and add to job data
+        job_data['company_info'] = company_info_dict
+
+        logger.info(f"Enriched {company_name} with company info: size={company_info_dict.get('size_category')}, tier={company_info_dict.get('tier')}")
+
+    except Exception as e:
+        logger.error(f"Error enriching company info: {e}")
+        # Use default company info on error
+        job_data['company_info'] = CompanyInfo().model_dump()
+
+    return job_data
 
 
 @app.route('/tutorial')
@@ -98,6 +135,10 @@ def scrape():
             }), 400
 
         job_data = extract_result['data']
+
+        # Step 3: Enrich with company information
+        logger.info("Step 3: Enriching with company information...")
+        job_data = enrich_job_with_company_info(job_data)
 
         # Validate with Pydantic
         try:
@@ -226,6 +267,9 @@ def scrape_batch():
 
             job_data = extract_result['data']
 
+            # Enrich with company information
+            job_data = enrich_job_with_company_info(job_data)
+
             # Validate with Pydantic
             try:
                 job = JobData(**job_data)
@@ -326,6 +370,9 @@ def extract_from_text():
             }), 400
 
         job_data = extract_result['data']
+
+        # Enrich with company information
+        job_data = enrich_job_with_company_info(job_data)
 
         # Validate with Pydantic
         try:
