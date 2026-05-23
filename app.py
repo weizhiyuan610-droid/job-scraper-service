@@ -621,6 +621,79 @@ def update_headers():
         }), 500
 
 
+@app.route('/api/validate-links', methods=['POST'])
+def validate_links():
+    """
+    Validate job application links
+    Checks if all job links are valid and accessible
+
+    Returns:
+        {
+            "success": true/false,
+            "summary": {"total": 50, "valid": 45, "invalid": 5},
+            "results": [{link validation details}]
+        }
+    """
+    try:
+        credentials = get_google_credentials()
+        if not credentials:
+            return jsonify({
+                "success": False,
+                "error": "Google credentials not configured"
+            }), 500
+
+        writer = SheetsWriter(credentials_json=credentials)
+        writer.open_spreadsheet(
+            sheet_id=settings.google_sheet_id,
+            sheet_name=settings.google_sheet_name
+        )
+
+        # Get all jobs from sheet
+        all_jobs = writer.worksheet.get_all_records()
+        logger.info(f"Validating links for {len(all_jobs)} jobs")
+
+        if not all_jobs:
+            return jsonify({
+                "success": True,
+                "summary": {
+                    "total": 0,
+                    "valid": 0,
+                    "invalid": 0,
+                    "breakdown": {}
+                },
+                "results": []
+            })
+
+        # Validate links (limit to first 50 for performance)
+        max_jobs = min(len(all_jobs), 50)
+        jobs_to_check = all_jobs[:max_jobs]
+
+        from scraper.link_validator import validate_links_sync
+        validation_result = validate_links_sync(jobs_to_check, timeout=8)
+
+        logger.info(f"Link validation complete: {validation_result['valid']}/{validation_result['total']} valid")
+
+        return jsonify({
+            "success": True,
+            "summary": {
+                "total": validation_result['total'],
+                "valid": validation_result['valid'],
+                "invalid": validation_result['invalid'],
+                "breakdown": validation_result.get('breakdown', {}),
+                "checked": max_jobs,
+                "remaining": max(0, len(all_jobs) - max_jobs)
+            },
+            "results": validation_result['results']
+        })
+
+    except Exception as e:
+        logger.error(f"Error validating links: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 @app.errorhandler(404)
 def not_found(error):
     """Handle 404 errors"""
