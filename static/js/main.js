@@ -654,7 +654,7 @@ function cancelCompanyEdit() {
 /**
  * Validate all job application links
  */
-async function validateLinks() {
+async function validateLinks(offset = 0) {
     const btn = document.getElementById('checkLinksBtn');
     const badge = document.getElementById('linkCheckBadge');
     const resultsDiv = document.getElementById('linkCheckResults');
@@ -671,7 +671,8 @@ async function validateLinks() {
     resultsDiv.classList.add('hidden');
 
     try {
-        const response = await fetch('/api/validate-links');
+        const url = offset > 0 ? `/api/validate-links?offset=${offset}` : '/api/validate-links';
+        const response = await fetch(url);
         const result = await response.json();
 
         if (result.success) {
@@ -696,6 +697,16 @@ async function validateLinks() {
 }
 
 /**
+ * Continue checking next batch of links
+ */
+function continueLinkCheck() {
+    const nextOffset = document.getElementById('nextOffset').value;
+    if (nextOffset) {
+        validateLinks(parseInt(nextOffset));
+    }
+}
+
+/**
  * Display link check results
  */
 function displayLinkCheckResults(result) {
@@ -704,8 +715,9 @@ function displayLinkCheckResults(result) {
     const badge = document.getElementById('linkCheckBadge');
     const resultsDiv = document.getElementById('linkCheckResults');
 
-    // Update badge
-    badge.textContent = `${summary.valid}/${summary.total} 有效`;
+    // Update badge with progress
+    const progressText = summary.total_jobs ? ` (${summary.progress})` : '';
+    badge.textContent = `${summary.valid}/${summary.total} 有效${progressText}`;
     if (summary.invalid === 0) {
         badge.className = 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800';
     } else {
@@ -719,8 +731,8 @@ function displayLinkCheckResults(result) {
     const summaryDiv = document.getElementById('linkCheckSummary');
     summaryDiv.innerHTML = `
         <div class="bg-blue-50 rounded-lg p-4 text-center">
-            <div class="text-2xl font-bold text-blue-600">${summary.total}</div>
-            <div class="text-sm text-gray-600">总计</div>
+            <div class="text-2xl font-bold text-blue-600">${summary.total_jobs || summary.total}</div>
+            <div class="text-sm text-gray-600">总职位数</div>
         </div>
         <div class="bg-green-50 rounded-lg p-4 text-center">
             <div class="text-2xl font-bold text-green-600">${summary.valid}</div>
@@ -730,11 +742,41 @@ function displayLinkCheckResults(result) {
             <div class="text-2xl font-bold text-red-600">${summary.invalid}</div>
             <div class="text-sm text-gray-600">❌ 失效</div>
         </div>
-        <div class="bg-gray-50 rounded-lg p-4 text-center">
-            <div class="text-2xl font-bold text-gray-600">${summary.remaining}</div>
-            <div class="text-sm text-gray-600">待检查</div>
+        <div class="bg-purple-50 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-purple-600">${summary.remaining}</div>
+            <div class="text-sm text-gray-600">⏳ 待检查</div>
         </div>
     `;
+
+    // Add continue button if there are remaining jobs
+    const existingContinueBtn = document.getElementById('continueCheckBtn');
+    if (existingContinueBtn) {
+        existingContinueBtn.remove();
+    }
+
+    if (summary.remaining > 0) {
+        const summaryDivContainer = document.getElementById('linkCheckSummary');
+        const continueBtnDiv = document.createElement('div');
+        continueBtnDiv.className = 'col-span-4 text-center mt-4';
+        continueBtnDiv.innerHTML = `
+            <button id="continueCheckBtn" onclick="continueLinkCheck()" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-purple-700 transition-colors">
+                📋 继续检查下一批 (${summary.remaining} 个剩余)
+            </button>
+            <input type="hidden" id="nextOffset" value="${summary.next_offset}">
+        `;
+        summaryDivContainer.appendChild(continueBtnDiv);
+    } else if (summary.total_jobs > 0) {
+        // All done - show completion message
+        const summaryDivContainer = document.getElementById('linkCheckSummary');
+        const completeDiv = document.createElement('div');
+        completeDiv.className = 'col-span-4 text-center mt-4';
+        completeDiv.innerHTML = `
+            <div class="text-green-600 font-medium">
+                ✅ 全部检查完成！共检查 ${summary.total_jobs} 个职位
+            </div>
+        `;
+        summaryDivContainer.appendChild(completeDiv);
+    }
 
     // Separate valid and invalid links
     const invalidLinks = results.filter(r => !r.valid);

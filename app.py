@@ -625,16 +625,25 @@ def update_headers():
 def validate_links():
     """
     Validate job application links
-    Checks if all job links are valid and accessible
+    Checks if job links are valid and accessible
+
+    Query params:
+        offset: Starting index (default: 0, for batch checking)
+        limit: Number of jobs to check (default: 50)
 
     Returns:
         {
             "success": true/false,
-            "summary": {"total": 50, "valid": 45, "invalid": 5},
+            "summary": {"total": 50, "valid": 45, "invalid": 5, "checked": 50, "remaining": 102},
             "results": [{link validation details}]
         }
     """
     try:
+        # Get batch parameters
+        offset = int(request.args.get('offset', 0))
+        limit = int(request.args.get('limit', 50))
+        limit = min(limit, 100)  # Max 100 per batch
+
         credentials = get_google_credentials()
         if not credentials:
             return jsonify({
@@ -650,28 +659,41 @@ def validate_links():
 
         # Get all jobs from sheet
         all_jobs = writer.worksheet.get_all_records()
-        logger.info(f"Validating links for {len(all_jobs)} jobs")
+        total_jobs = len(all_jobs)
 
-        if not all_jobs:
+        logger.info(f"Validating links with offset={offset}, limit={limit}, total_jobs={total_jobs}")
+
+        if not all_jobs or offset >= total_jobs:
             return jsonify({
                 "success": True,
                 "summary": {
                     "total": 0,
                     "valid": 0,
                     "invalid": 0,
-                    "breakdown": {}
+                    "breakdown": {},
+                    "checked": 0,
+                    "remaining": 0,
+                    "offset": offset,
+                    "complete": True
                 },
                 "results": []
             })
 
-        # Validate links (limit to first 50 for performance)
-        max_jobs = min(len(all_jobs), 50)
-        jobs_to_check = all_jobs[:max_jobs]
+        # Get jobs for this batch
+        end_index = min(offset + limit, total_jobs)
+        jobs_to_check = all_jobs[offset:end_index]
 
         from scraper.link_validator import validate_links_sync
         validation_result = validate_links_sync(jobs_to_check, timeout=8)
 
+        # Add offset to each result for correct row number
+        for result in validation_result['results']:
+            result['row'] = result['row'] + offset  # Adjust row number based on offset
+
         logger.info(f"Link validation complete: {validation_result['valid']}/{validation_result['total']} valid")
+
+        remaining_jobs = max(0, total_jobs - end_index)
+        complete = remaining_jobs == 0
 
         return jsonify({
             "success": True,
@@ -680,8 +702,13 @@ def validate_links():
                 "valid": validation_result['valid'],
                 "invalid": validation_result['invalid'],
                 "breakdown": validation_result.get('breakdown', {}),
-                "checked": max_jobs,
-                "remaining": max(0, len(all_jobs) - max_jobs)
+                "checked": end_index - offset,
+                "remaining": remaining_jobs,
+                "offset": offset,
+                "next_offset": end_index if not complete else None,
+                "complete": complete,
+                "total_jobs": total_jobs,
+                "progress": f"{end_index}/{total_jobs}"
             },
             "results": validation_result['results']
         })
