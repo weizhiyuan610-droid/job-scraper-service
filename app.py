@@ -621,7 +621,7 @@ def update_headers():
         }), 500
 
 
-@app.route('/api/validate-links', methods=['POST'])
+@app.route('/api/validate-links', methods=['GET', 'POST'])
 def validate_links():
     """
     Validate job application links
