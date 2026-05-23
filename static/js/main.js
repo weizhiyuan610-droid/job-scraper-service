@@ -650,3 +650,163 @@ function cancelCompanyEdit() {
     // Switch back to display mode
     toggleCompanyEdit();
 }
+
+/**
+ * Validate all job application links
+ */
+async function validateLinks() {
+    const btn = document.getElementById('checkLinksBtn');
+    const badge = document.getElementById('linkCheckBadge');
+    const resultsDiv = document.getElementById('linkCheckResults');
+
+    // Show loading state
+    btn.disabled = true;
+    btn.textContent = '⏳ 检查中...';
+    btn.className = 'w-full bg-gray-400 text-white font-medium py-2 px-4 rounded-lg cursor-not-allowed';
+
+    badge.classList.remove('hidden');
+    badge.textContent = '检查中...';
+    badge.className = 'px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800';
+
+    resultsDiv.classList.add('hidden');
+
+    try {
+        const response = await fetch('/api/validate-links');
+        const result = await response.json();
+
+        if (result.success) {
+            displayLinkCheckResults(result);
+            showToast(`检查完成！${result.summary.valid}/${result.summary.total} 个链接有效`, result.summary.invalid > 0 ? 'warning' : 'success');
+        } else {
+            showToast('检查失败: ' + result.error, 'error');
+            badge.textContent = '检查失败';
+            badge.className = 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800';
+        }
+
+    } catch (error) {
+        console.error('Error:', error);
+        showToast('网络错误，请重试', 'error');
+        badge.textContent = '网络错误';
+        badge.className = 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '重新检查';
+        btn.className = 'w-full bg-blue-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors';
+    }
+}
+
+/**
+ * Display link check results
+ */
+function displayLinkCheckResults(result) {
+    const summary = result.summary;
+    const results = result.results;
+    const badge = document.getElementById('linkCheckBadge');
+    const resultsDiv = document.getElementById('linkCheckResults');
+
+    // Update badge
+    badge.textContent = `${summary.valid}/${summary.total} 有效`;
+    if (summary.invalid === 0) {
+        badge.className = 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800';
+    } else {
+        badge.className = 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800';
+    }
+
+    // Show results
+    resultsDiv.classList.remove('hidden');
+
+    // Display summary cards
+    const summaryDiv = document.getElementById('linkCheckSummary');
+    summaryDiv.innerHTML = `
+        <div class="bg-blue-50 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-blue-600">${summary.total}</div>
+            <div class="text-sm text-gray-600">总计</div>
+        </div>
+        <div class="bg-green-50 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-green-600">${summary.valid}</div>
+            <div class="text-sm text-gray-600">✅ 有效</div>
+        </div>
+        <div class="bg-red-50 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-red-600">${summary.invalid}</div>
+            <div class="text-sm text-gray-600">❌ 失效</div>
+        </div>
+        <div class="bg-gray-50 rounded-lg p-4 text-center">
+            <div class="text-2xl font-bold text-gray-600">${summary.remaining}</div>
+            <div class="text-sm text-gray-600">待检查</div>
+        </div>
+    `;
+
+    // Separate valid and invalid links
+    const invalidLinks = results.filter(r => !r.valid);
+    const validLinks = results.filter(r => r.valid);
+
+    // Display invalid links
+    const invalidSection = document.getElementById('invalidLinksSection');
+    const invalidList = document.getElementById('invalidLinksList');
+
+    if (invalidLinks.length > 0) {
+        invalidSection.classList.remove('hidden');
+        invalidList.innerHTML = invalidLinks.map(link => `
+            <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-900">${link.company} - ${link.title}</div>
+                        <div class="text-sm text-gray-600 mt-1">
+                            <span class="text-gray-400">行 ${link.row}:</span>
+                            <a href="${link.url}" target="_blank" class="text-blue-600 hover:underline break-all">${link.url.substring(0, 60)}${link.url.length > 60 ? '...' : ''}</a>
+                        </div>
+                        <div class="text-xs text-red-600 mt-1">
+                            ${link.status}: ${link.error || 'Unknown error'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        invalidSection.classList.add('hidden');
+    }
+
+    // Display valid links (collapsible)
+    const validSection = document.getElementById('validLinksSection');
+    const validList = document.getElementById('validLinksList');
+    const validCount = document.getElementById('validLinksCount');
+
+    if (validLinks.length > 0) {
+        validSection.classList.remove('hidden');
+        validCount.textContent = validLinks.length;
+        validList.innerHTML = validLinks.map(link => `
+            <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="font-medium text-gray-900">${link.company} - ${link.title}</div>
+                        <div class="text-sm text-gray-600 mt-1">
+                            <span class="text-gray-400">行 ${link.row}:</span>
+                            <a href="${link.url}" target="_blank" class="text-blue-600 hover:underline break-all">${link.url.substring(0, 60)}${link.url.length > 60 ? '...' : ''}</a>
+                        </div>
+                        <div class="text-xs text-green-600 mt-1">
+                            ✅ ${link.status} (${link.status_code})
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        validSection.classList.add('hidden');
+    }
+}
+
+/**
+ * Toggle valid links visibility
+ */
+function toggleValidLinks() {
+    const validList = document.getElementById('validLinksList');
+    const toggle = document.getElementById('validLinksToggle');
+
+    if (validList.classList.contains('hidden')) {
+        validList.classList.remove('hidden');
+        toggle.textContent = '▼️';
+    } else {
+        validList.classList.add('hidden');
+        toggle.textContent = '▶️';
+    }
+}
