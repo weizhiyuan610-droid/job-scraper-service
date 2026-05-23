@@ -75,7 +75,11 @@ function populateForm(data) {
         'salary': 'salary',
         'apply_link': 'apply_link',
         'description': 'description',
-        'status': 'status'
+        'status': 'status',
+        'department': 'department',
+        'job_level': 'job_level',
+        'work_mode': 'work_mode',
+        'target_audience': 'target_audience'
     };
 
     // Fill form fields
@@ -99,6 +103,13 @@ function populateForm(data) {
     if (majorElement && data['preferred_major'] && Array.isArray(data['preferred_major'])) {
         // Join array with comma for display
         majorElement.value = data['preferred_major'].join(', ');
+    }
+
+    // Special handling for skills_tags (array field)
+    const skillsElement = document.getElementById('skills_tags');
+    if (skillsElement && data['skills_tags'] && Array.isArray(data['skills_tags'])) {
+        // Join array with comma for display
+        skillsElement.value = data['skills_tags'].join(', ');
     }
 
     // Update confidence score
@@ -153,7 +164,28 @@ async function saveJob(event) {
         salary: document.getElementById('salary').value,
         apply_link: document.getElementById('apply_link').value,
         description: document.getElementById('description').value,
+        // New fields
+        department: document.getElementById('department').value,
+        job_level: document.getElementById('job_level').value,
+        work_mode: document.getElementById('work_mode').value,
+        target_audience: document.getElementById('target_audience').value,
     };
+
+    // Handle skills_tags (comma-separated to array)
+    const skillsValue = document.getElementById('skills_tags').value;
+    if (skillsValue && skillsValue.trim()) {
+        formData.skills_tags = skillsValue.split(',').map(s => s.trim()).filter(s => s);
+    } else {
+        formData.skills_tags = [];
+    }
+
+    // Handle preferred_major (comma-separated to array)
+    const majorValue = document.getElementById('preferred_major').value;
+    if (majorValue && majorValue.trim()) {
+        formData.preferred_major = majorValue.split(',').map(s => s.trim()).filter(s => s);
+    } else {
+        formData.preferred_major = [];
+    }
 
     // Add company info if available
     const companyCard = document.getElementById('companyInfoCard');
