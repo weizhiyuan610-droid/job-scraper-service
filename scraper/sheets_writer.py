@@ -193,15 +193,15 @@ class SheetsWriter:
             job = JobData(**job_data)
             row_data = job.to_google_sheets_row()
 
-            # Write to sheet using update to specify exact range (B-AC columns)
-            # row_data[0] is empty for column A, row_data[1:] is columns B-AC (29 columns)
-            # Range format: "B6:AC6" for row 6
-            cell_range = f"B{row_number}:AC{row_number}"
+            # Write to sheet using update to specify exact range (B-AH columns)
+            # row_data[0] is empty for column A, row_data[1:] is columns B-AH (34 columns)
+            # Range format: "B6:AH6" for row 6
+            cell_range = f"B{row_number}:AH{row_number}"
 
-            # Ensure we have exactly 29 columns (B to AC)
-            row_to_write = row_data[1:29]  # Skip column A, take columns B-AC
+            # Ensure we have exactly 34 columns (B to AH)
+            row_to_write = row_data[1:34]  # Skip column A, take columns B-AH
             # Pad with empty strings if needed
-            while len(row_to_write) < 29:
+            while len(row_to_write) < 34:
                 row_to_write.append('')
 
             self.worksheet.update(cell_range, [row_to_write], value_input_option='USER_ENTERED')

@@ -1,5 +1,6 @@
 """
-AI Prompt for job data extraction
+AI Prompt for job data extraction - Enhanced Version
+精确解析签证和学位要求的语义信息
 """
 
 JOB_EXTRACTION_PROMPT = """You are a professional job information extraction assistant. Extract job details from the following web page content and output in strict JSON format.
@@ -18,11 +19,55 @@ Extract the following fields and return ONLY a JSON object (no other text):
   "apply_link": "Complete application URL",
   "deadline": "Application deadline in YYYY-MM-DD format, or text like 'ASAP', 'Rolling' if not specified",
   "opened": "Posting date in YYYY-MM-DD format, or empty string if not found",
-  "degree": "Select one: Bachelor, Master, PhD, MBA, Any, Preferred",
-  "visa_sponsorship": "Select one: Yes, No, Case by case, Not mentioned",
+
+  // ============================================
+  // ENHANCED: Precise degree parsing
+  // ============================================
+  "degree_min": "Minimum REQUIRED degree: bachelor, master, phd, any. Choose based on JD context:",
+  "degree_preferred": "Preferred degree (if different from min): bachelor, master, phd, or empty if same as min",
+
+  // DEGREE PARSING RULES (analyze the FULL context):
+  // - "Bachelor's degree required" → degree_min: "bachelor", degree_preferred: ""
+  // - "Bachelor's required, Master's preferred" → degree_min: "bachelor", degree_preferred: "master"
+  // - "Master's degree required" → degree_min: "master", degree_preferred: ""
+  // - "Master's preferred" or "Advanced degree preferred" → degree_min: "bachelor", degree_preferred: "master"
+  // - "PhD required" → degree_min: "phd", degree_preferred: ""
+  // - "Bachelor's in Computer Science or related field" → degree_min: "bachelor", degree_preferred: ""
+  // - "Any degree" or "Degree in any discipline" → degree_min: "any", degree_preferred: ""
+  // - If degree not mentioned → degree_min: "any", degree_preferred: ""
+
+  // ============================================
+  // ENHANCED: Precise visa sponsorship parsing
+  // ============================================
+  "visa_sponsorship": true/false,  // Backward compatibility
+  "visa_mentioned": "Semantic analysis of visa mention. Choose ONE:",
+  "visa_note": "Brief note explaining visa situation (e.g., 'We can sponsor', 'Must have existing work permit')",
+
+  // VISA PARSING RULES (analyze the FULL context):
+  // - "We can sponsor visa" / "We provide visa sponsorship" / "Sponsorship available"
+  //   → visa_sponsorship: true, visa_mentioned: "explicit_yes"
+  //
+  // - "Must have valid work visa" / "Must have existing work authorization" / "Cannot sponsor"
+  //   → visa_sponsorship: false, visa_mentioned: "explicit_no"
+  //
+  // - "Will consider visa sponsorship on case by case basis" / "Sponsorship case by case"
+  //   → visa_sponsorship: true, visa_mentioned: "case_by_case"
+  //
+  // - "Right to work in UK required" / "Must have UK work permit" (without mention of sponsorship)
+  //   → visa_sponsorship: false, visa_mentioned: "explicit_no"
+  //
+  // - If visa is NOT mentioned at all in the JD
+  //   → visa_sponsorship: false, visa_mentioned: "not_mentioned"
+
   "target_year": "Target graduation year(s). Use comma-separated if multiple: e.g., '2025, 2026' or '2026' or 'Any'",
   "salary": "Salary range as shown on page (original text)",
   "description": "Clean job description without company name prefix. Remove patterns like 'Company X is looking for/hiring/seeking'. Extract core responsibilities and requirements (first 500 characters max)",
+
+  // ============================================
+  // RAW DESCRIPTION FOR VERIFICATION
+  // ============================================
+  "raw_description": "FULL job description text from the page (max 2000 chars). Include ALL requirements, responsibilities, qualifications. This is for verification purposes.",
+
   "preferred_major": ["major1", "major2"] (array of preferred majors. Classify into: STEM, CS, Media, Art, Business, Finance, Law, Other. Add '-related' suffix if JD mentions 'related disciplines' or similar. Empty array if not specified),
   "skills_tags": ["skill1", "skill2", "skill3"] (array of technical/functional skills extracted from requirements. Extract 5-10 key skills. Include: programming languages, tools, frameworks, soft skills. Empty array if not found),
   "department": "Department or team name (e.g., 'Engineering', 'Data Science', 'Product', 'Marketing', 'Sales', 'Finance'). Leave empty if not specified",
@@ -88,9 +133,9 @@ EXTRACTION RULES:
    - Other: Any other industry not listed above
 
 5. Deadline: Look for "Application deadline", "Apply by", etc. Use YYYY-MM-DD format or text
-6. Visa sponsorship: Set to "Yes" if page mentions "visa", "sponsorship", "work authorization", "work permit"
-7. Type: Default to "Full-time" if not specified
-8. Degree: Default to "Any" if not mentioned
+6. Degree: Use the ENHANCED parsing rules above to distinguish between required and preferred
+7. Visa: Use the ENHANCED parsing rules above to categorize visa sponsorship status
+8. Type: Default to "Full-time" if not specified
 9. Apply link: Look for "Apply Now", "Apply here", "Application" buttons or links. Extract the complete URL. If not found, leave empty.
 10. Salary: Extract exact text if shown, leave as empty string if not mentioned
 11. Preferred major classification:
@@ -144,6 +189,8 @@ EXTRACTION RULES:
 19. If a field cannot be determined, use null or empty string/default value
 20. Description: Clean up the text by removing company name prefixes and redundant phrases like "is looking for", "is hiring", "we are seeking". Focus on actual job responsibilities and requirements.
 
+21. RAW DESCRIPTION: Include the COMPLETE job description text for verification. This helps validate the structured extraction later.
+
 IMPORTANT: Return ONLY the JSON object, no additional text or explanation."""
 
 # Simplified version for faster processing
@@ -161,11 +208,23 @@ Required fields (JSON format):
   "apply_link": "URL",
   "deadline": "YYYY-MM-DD or ASAP/Rolling",
   "opened": "YYYY-MM-DD or empty",
-  "degree": "Bachelor/Master/PhD/MBA/Any/Preferred",
-  "visa_sponsorship": "Yes/No/Case by case/Not mentioned",
+
+  // ENHANCED DEGREE PARSING
+  "degree_min": "bachelor/master/phd/any (minimum REQUIRED degree)",
+  "degree_preferred": "bachelor/master/phd or empty (if different from min)",
+
+  // ENHANCED VISA PARSING
+  "visa_sponsorship": true/false,
+  "visa_mentioned": "explicit_yes/explicit_no/not_mentioned/case_by_case",
+  "visa_note": "brief explanation",
+
   "target_year": "2025, 2026, 2027, or Any (comma-separated if multiple)",
   "salary": "string or empty",
   "description": "Clean description without company prefix or 'looking for' phrases (max 500 chars)",
+
+  // RAW DESCRIPTION FOR VERIFICATION
+  "raw_description": "FULL JD text (max 2000 chars) for verification",
+
   "preferred_major": ["STEM", "CS", "Media", "Art", "Business", "Finance", "Law", "Other"] (classify majors, add '-related' if mentions related disciplines),
   "skills_tags": ["Python", "SQL", "AWS"] (extract 5-10 key skills),
   "department": "department name",
@@ -175,6 +234,19 @@ Required fields (JSON format):
   "salary_range_normalized": "80K-120K" or empty,
   "status": "Active" (default Active, only Inactive if closed/expired/filled)
 }}
+
+DEGREE PARSING:
+- "Bachelor's required" → degree_min: "bachelor", degree_preferred: ""
+- "Bachelor's required, Master's preferred" → degree_min: "bachelor", degree_preferred: "master"
+- "Master's preferred" → degree_min: "bachelor", degree_preferred: "master"
+- "Master's required" → degree_min: "master", degree_preferred: ""
+- "Not mentioned" → degree_min: "any", degree_preferred: ""
+
+VISA PARSING:
+- "We sponsor visa" → visa_sponsorship: true, visa_mentioned: "explicit_yes"
+- "Must have work permit" → visa_sponsorship: false, visa_mentioned: "explicit_no"
+- "Not mentioned" → visa_sponsorship: false, visa_mentioned: "not_mentioned"
+- "Case by case" → visa_sponsorship: true, visa_mentioned: "case_by_case"
 
 INDUSTRY GUIDE:
 - SDE: software engineer, backend, frontend, full-stack, web/mobile dev

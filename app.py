@@ -564,7 +564,7 @@ def update_headers():
         }
     """
     try:
-        # Define the new headers
+        # Define the new headers (enhanced with precise parsing fields)
         headers = [
             'ID', 'Company', 'Title', 'Industry', 'Location', 'Salary',
             'VisaSponsorship', 'Deadline', 'PreferredMajors', 'TargetYear',
@@ -573,6 +573,9 @@ def update_headers():
             'SalaryRange', 'CompanySize', 'EmployeeCount', 'FundingStage',
             'CompanyHQ', 'YearFounded', 'CompanyTier', 'CompanyWebsite',
             'CompanyDomain',
+            # NEW: Enhanced parsing fields for precise analysis
+            'DegreeMin', 'DegreePreferred', 'VisaMentioned', 'VisaNote',
+            'RawDescription',
         ]
 
         credentials = get_google_credentials()

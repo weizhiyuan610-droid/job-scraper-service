@@ -1,5 +1,6 @@
 """
 Pydantic schemas for job data validation
+Enhanced with precise degree/visa parsing
 """
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 from typing import Optional, List
@@ -16,11 +17,32 @@ class JobExtraction(BaseModel):
     apply_link: str = Field(..., description="Application URL")
     deadline: str = Field(..., description="Application deadline (YYYY-MM-DD or text)")
     opened: Optional[str] = Field("", description="Posted date (YYYY-MM-DD)")
-    degree: str = Field(..., description="Degree requirement")
-    visa_sponsorship: str = Field(..., description="Visa sponsorship availability")
+
+    # ============================================
+    # ENHANCED: Precise degree parsing
+    # ============================================
+    degree_min: str = Field(default="any", description="Minimum REQUIRED degree: bachelor, master, phd, any")
+    degree_preferred: str = Field(default="", description="Preferred degree (if different from min)")
+
+    # Backward compatible: map old 'degree' field to degree_min
+    degree: Optional[str] = Field(default="any", description="Legacy field - maps to degree_min")
+
+    # ============================================
+    # ENHANCED: Precise visa parsing
+    # ============================================
+    visa_sponsorship: bool = Field(default=False, description="Backward compatibility: true if sponsorship available")
+    visa_mentioned: str = Field(default="not_mentioned", description="Visa status: explicit_yes, explicit_no, not_mentioned, case_by_case")
+    visa_note: str = Field(default="", description="Brief note explaining visa situation")
+
     target_year: str = Field(default="Any", description="Target graduation year")
     salary: Optional[str] = Field("", description="Salary range")
     description: str = Field(default="", description="Job description")
+
+    # ============================================
+    // RAW DESCRIPTION FOR VERIFICATION
+    // ============================================
+    raw_description: str = Field(default="", description="Full job description text for verification")
+
     preferred_major: Optional[List[str]] = Field(default_factory=list, description="Preferred majors")
 
     # New fields for smart recommendation
@@ -31,25 +53,94 @@ class JobExtraction(BaseModel):
     target_audience: Optional[str] = Field("Not specified", description="Target audience: New Grad/Intern/Experienced")
     salary_range_normalized: Optional[str] = Field("", description="Normalized salary range for filtering")
 
-    @field_validator('visa_sponsorship')
+    @field_validator('visa_mentioned')
     @classmethod
-    def normalize_visa_sponsorship(cls, v: str) -> str:
-        """Normalize visa sponsorship values"""
+    def normalize_visa_mentioned(cls, v: str) -> str:
+        """Normalize visa_mentioned values"""
         v_clean = v.lower().strip()
 
-        # Exact matches first (handle user-selected values)
-        if v_clean in ['yes', 'no', 'case by case', 'not mentioned']:
-            return v_clean.capitalize() if v_clean != 'case by case' else 'Case by case'
+        valid_values = {
+            'explicit_yes': 'explicit_yes',
+            'yes': 'explicit_yes',
+            'explicit_no': 'explicit_no',
+            'no': 'explicit_no',
+            'not_mentioned': 'not_mentioned',
+            'not mentioned': 'not_mentioned',
+            'case_by_case': 'case_by_case',
+            'case by case': 'case_by_case',
+        }
 
-        # Substring matches (handle AI-extracted variations)
-        if any(word in v_clean for word in ['yes', 'available', 'provided', 'supported', 'sponsored']):
-            return 'Yes'
-        elif any(word in v_clean for word in ['no', 'unavailable']):
-            return 'No'
-        elif any(word in v_clean for word in ['case', 'consider']):
-            return 'Case by case'
+        for key, value in valid_values.items():
+            if key in v_clean:
+                return value
+
+        # Try substring matching for flexibility
+        if 'sponsor' in v_clean and 'not' not in v_clean and 'cannot' not in v_clean:
+            return 'explicit_yes'
+        elif 'cannot sponsor' in v_clean or 'must have' in v_clean:
+            return 'explicit_no'
+        elif 'case' in v_clean:
+            return 'case_by_case'
         else:
-            return 'Not mentioned'
+            return 'not_mentioned'
+
+    @field_validator('degree_min')
+    @classmethod
+    def normalize_degree_min(cls, v: str) -> str:
+        """Normalize degree_min values"""
+        v_lower = v.lower().strip()
+
+        # Handle legacy 'degree' field values
+        degree_mapping = {
+            'phd': 'phd',
+            'doctor': 'phd',
+            'master': 'master',
+            'mba': 'master',
+            'bachelor': 'bachelor',
+            'undergraduate': 'bachelor',
+            'any': 'any',
+            'prefer': 'any',  # "preferred" means any is acceptable minimum
+            'preferred': 'any',
+        }
+
+        for key, value in degree_mapping.items():
+            if key in v_lower:
+                return value
+
+        return 'any'
+
+    @field_validator('degree_preferred')
+    @classmethod
+    def normalize_degree_preferred(cls, v: str) -> str:
+        """Normalize degree_preferred values"""
+        if not v or v.strip() == "":
+            return ""
+
+        v_lower = v.lower().strip()
+
+        degree_mapping = {
+            'phd': 'phd',
+            'doctor': 'phd',
+            'master': 'master',
+            'mba': 'master',
+            'bachelor': 'bachelor',
+            'undergraduate': 'bachelor',
+        }
+
+        for key, value in degree_mapping.items():
+            if key in v_lower:
+                return value
+
+        return v  # Return as-is if not recognized
+
+    # Legacy field validator - maps old 'degree' to appropriate field
+    @field_validator('degree', mode='before')
+    @classmethod
+    def map_legacy_degree(cls, v: str) -> str:
+        """Map legacy degree field to degree_min"""
+        # This validator runs before field assignment
+        # We'll handle the mapping in the model logic
+        return v or "any"
 
     @field_validator('industry')
     @classmethod
@@ -190,22 +281,6 @@ class JobExtraction(BaseModel):
         else:
             return 'Full-time'  # Default
 
-    @field_validator('degree')
-    @classmethod
-    def normalize_degree(cls, v: str) -> str:
-        """Normalize degree values"""
-        v_lower = v.lower().strip()
-        if 'master' in v_lower or 'mba' in v_lower:
-            return 'Master'
-        elif 'phd' in v_lower or 'doctor' in v_lower:
-            return 'PhD'
-        elif 'bachelor' in v_lower or 'undergraduate' in v_lower:
-            return 'Bachelor'
-        elif 'any' in v_lower or 'prefer' in v_lower:
-            return 'Any'
-        else:
-            return 'Preferred'
-
     @field_validator('job_level')
     @classmethod
     def normalize_job_level(cls, v: str) -> str:
@@ -313,9 +388,21 @@ class JobData(JobExtraction):
     def to_google_sheets_row(self) -> list:
         """
         Convert to Google Sheets row format
-        Updated with smart recommendation fields and company info
+        Enhanced with precise parsing fields
         """
         company_info = self.company_info or CompanyInfo()
+
+        # Map legacy degree field to new structure
+        degree_display = self.degree_min
+        if self.degree_preferred:
+            degree_display = f"{self.degree_min} (prefer {self.degree_preferred})"
+
+        # Build visa display
+        visa_display = "Yes" if self.visa_sponsorship else "No"
+        if self.visa_mentioned == "not_mentioned":
+            visa_display = "Not mentioned"
+        elif self.visa_mentioned == "case_by_case":
+            visa_display = "Case by case"
 
         return [
             '',                              # A列: ID (empty - not filled by this tool)
@@ -324,13 +411,13 @@ class JobData(JobExtraction):
             self.industry,                   # D列: Industry
             self.location,                   # E列: Location
             self.salary,                     # F列: Salary (original)
-            self.visa_sponsorship,           # G列: VisaSponsorship
+            visa_display,                    # G列: VisaSponsorship (enhanced display)
             self.deadline,                   # H列: Deadline
             ', '.join(self.preferred_major) if self.preferred_major else '',  # I列: PreferredMajors
             self.target_year,                # J列: TargetYear
-            self.degree,                     # K列: Degree
+            degree_display,                  # K列: Degree (enhanced display)
             self.type,                       # L列: Type
-            self.description,                # M列: Description
+            self.description,                # M列: Description (clean)
             self.apply_link,                 # N列: ApplicationUrl
             self.status,                     # O列: Status
             # Smart recommendation fields
@@ -340,7 +427,7 @@ class JobData(JobExtraction):
             self.work_mode,                  # S列: Work Mode
             self.target_audience,            # T列: Target Audience
             self.salary_range_normalized,    # U列: Salary Range (normalized)
-            # Company info fields (new columns V-AD)
+            # Company info fields (V-AC)
             company_info.size_category,      # V列: Company Size
             company_info.employee_count,     # W列: Employee Count
             company_info.funding_stage,      # X列: Funding Stage
@@ -349,4 +436,12 @@ class JobData(JobExtraction):
             company_info.tier,               # AA列: Company Tier
             company_info.company_website,    # AB列: Company Website
             company_info.domain,             # AC列: Company Domain
+            # ============================================
+            // NEW: Enhanced parsing fields
+            // ============================================
+            self.degree_min,                 # AD列: Degree Min (new)
+            self.degree_preferred,           # AE列: Degree Preferred (new)
+            self.visa_mentioned,             # AF列: Visa Mentioned (new)
+            self.visa_note,                  # AG列: Visa Note (new)
+            self.raw_description[:1000] if self.raw_description else '',  # AH列: Raw Description (new, truncated for Sheets)
         ]
