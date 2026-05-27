@@ -39,8 +39,8 @@ class JobExtraction(BaseModel):
     description: str = Field(default="", description="Job description")
 
     # ============================================
-    // RAW DESCRIPTION FOR VERIFICATION
-    // ============================================
+    # RAW DESCRIPTION FOR VERIFICATION
+    # ============================================
     raw_description: str = Field(default="", description="Full job description text for verification")
 
     preferred_major: Optional[List[str]] = Field(default_factory=list, description="Preferred majors")
@@ -437,8 +437,8 @@ class JobData(JobExtraction):
             company_info.company_website,    # AB列: Company Website
             company_info.domain,             # AC列: Company Domain
             # ============================================
-            // NEW: Enhanced parsing fields
-            // ============================================
+            # NEW: Enhanced parsing fields
+            # ============================================
             self.degree_min,                 # AD列: Degree Min (new)
             self.degree_preferred,           # AE列: Degree Preferred (new)
             self.visa_mentioned,             # AF列: Visa Mentioned (new)
