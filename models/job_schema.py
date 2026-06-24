@@ -34,6 +34,12 @@ class JobExtraction(BaseModel):
     visa_mentioned: str = Field(default="not_mentioned", description="Visa status: explicit_yes, explicit_no, not_mentioned, case_by_case")
     visa_note: str = Field(default="", description="Brief note explaining visa situation")
 
+    # ============================================
+    # NEW: Enhanced visa source tracking
+    # ============================================
+    visa_source: str = Field(default="unknown", description="Visa info source: jd_explicit/company_history/unknown")
+    visa_likelihood: str = Field(default="unknown", description="Visa likelihood: high/medium/low/unknown")
+
     target_year: str = Field(default="Any", description="Target graduation year")
     salary: Optional[str] = Field("", description="Salary range")
     description: str = Field(default="", description="Job description")
@@ -52,6 +58,12 @@ class JobExtraction(BaseModel):
     work_mode: Optional[str] = Field("Not specified", description="Work mode: Remote/Hybrid/Onsite")
     target_audience: Optional[str] = Field("Not specified", description="Target audience: New Grad/Intern/Experienced")
     salary_range_normalized: Optional[str] = Field("", description="Normalized salary range for filtering")
+
+    # ============================================
+    # NEW: Requirements and Perks
+    # ============================================
+    requirements: str = Field(default="", description="Job requirements (experience, skills, qualifications) - max 500 chars")
+    perks: Optional[List[str]] = Field(default_factory=list, description="Benefits and perks (insurance, vacation, bonus, etc.)")
 
     @field_validator('visa_mentioned')
     @classmethod
@@ -368,6 +380,14 @@ class JobData(JobExtraction):
     # Company information (enriched from database/AI)
     company_info: Optional[CompanyInfo] = Field(default_factory=CompanyInfo, description="Enriched company information")
 
+    # Pre-computed scores (calculated during scraping)
+    priority_score: Optional[float] = Field(None, description="Priority score (0-100) for sorting")
+    urgency_score: Optional[float] = Field(None, description="Urgency score (0-100) based on deadline")
+    freshness_score: Optional[float] = Field(None, description="Freshness score (0-100) based on posted date")
+    quality_score: Optional[float] = Field(None, description="Quality score (0-100) based on data completeness")
+    matchability_score: Optional[float] = Field(None, description="Matchability score (0-100) for filtering")
+    scores_calculated_at: Optional[str] = Field(None, description="Timestamp when scores were calculated")
+
     @field_validator('deadline')
     @classmethod
     def validate_date(cls, v: str) -> str:
@@ -403,6 +423,9 @@ class JobData(JobExtraction):
             visa_display = "Not mentioned"
         elif self.visa_mentioned == "case_by_case":
             visa_display = "Case by case"
+
+        # Format perks as comma-separated string
+        perks_display = ', '.join(self.perks) if self.perks else ''
 
         return [
             '',                              # A列: ID (empty - not filled by this tool)
@@ -444,4 +467,20 @@ class JobData(JobExtraction):
             self.visa_mentioned,             # AF列: Visa Mentioned (new)
             self.visa_note,                  # AG列: Visa Note (new)
             self.raw_description[:1000] if self.raw_description else '',  # AH列: Raw Description (new, truncated for Sheets)
+            # ============================================
+            # Pre-computed scores (new columns)
+            # ============================================
+            str(self.priority_score) if self.priority_score is not None else '',  # AI列: Priority Score
+            str(self.urgency_score) if self.urgency_score is not None else '',    # AJ列: Urgency Score
+            str(self.freshness_score) if self.freshness_score is not None else '',  # AK列: Freshness Score
+            str(self.quality_score) if self.quality_score is not None else '',    # AL列: Quality Score
+            str(self.matchability_score) if self.matchability_score is not None else '',  # AM列: Matchability Score
+            self.scores_calculated_at or '',  # AN列: Scores Calculated At
+            # ============================================
+            # NEW: Enhanced visa tracking + Requirements + Perks
+            # ============================================
+            self.requirements,               # AO列: Requirements (new)
+            perks_display,                   # AP列: Perks (new)
+            self.visa_source,                # AQ列: Visa Source (new)
+            self.visa_likelihood,            # AR列: Visa Likelihood (new)
         ]

@@ -48,6 +48,24 @@ def update_sheet_headers():
         'CompanyTier',           # AA列
         'CompanyWebsite',        # AB列
         'CompanyDomain',         # AC列
+        # Enhanced parsing fields
+        'DegreeMin',             # AD列
+        'DegreePreferred',       # AE列
+        'VisaMentioned',         # AF列
+        'VisaNote',              # AG列
+        'RawDescription',        # AH列
+        # Pre-computed scores
+        'priority_score',        # AI列
+        'urgency_score',         # AJ列
+        'freshness_score',       # AK列
+        'quality_score',         # AL列
+        'matchability_score',    # AM列
+        'scores_calculated_at',  # AN列
+        # NEW: Enhanced visa tracking + requirements + perks
+        'Requirements',          # AO列
+        'Perks',                 # AP列
+        'VisaSource',            # AQ列
+        'VisaLikelihood',        # AR列
     ]
 
     print("=== Google Sheet Header Update ===")
@@ -90,8 +108,16 @@ def update_sheet_headers():
                 print("Update cancelled.")
                 return True
 
-        # Calculate the range (e.g., A1:AC1)
-        end_col = chr(64 + len(headers)) if len(headers) <= 26 else f"A{chr(64 + len(headers) - 26)}"
+        # Calculate the range (e.g., A1:AT1)
+        # For 1-26: A-Z, for 27-52: AA-AZ, for 53-78: BA-BZ
+        num_cols = len(headers)
+        if num_cols <= 26:
+            end_col = chr(64 + num_cols)  # A=65, so A=1, B=2, ..., Z=26
+        else:
+            # For columns beyond Z: AA, AB, ..., AZ, BA, ...
+            first = chr(64 + (num_cols - 1) // 26)
+            second = chr(64 + ((num_cols - 1) % 26) + 1)
+            end_col = first + second
         cell_range = f"A1:{end_col}1"
 
         # Update headers
@@ -101,7 +127,14 @@ def update_sheet_headers():
         print()
         print("SUCCESS! Headers updated:")
         for i, header in enumerate(headers, 1):
-            col_letter = chr(64 + i) if i <= 26 else f"A{chr(64 + i - 26)}"
+            # Calculate column letter correctly (A-Z, then AA-AZ, BA-BZ, etc.)
+            if i <= 26:
+                col_letter = chr(64 + i)
+            else:
+                # For columns beyond Z: AA, AB, ..., AZ, BA, BZ, etc.
+                first = chr(64 + (i - 1) // 26)
+                second = chr(64 + ((i - 1) % 26) + 1)
+                col_letter = first + second
             print(f"  {col_letter}列: {header}")
 
         print()

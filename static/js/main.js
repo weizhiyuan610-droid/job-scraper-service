@@ -6,58 +6,6 @@
 let currentJobData = null;
 
 /**
- * Scrape job posting from URL
- */
-async function scrapeJob() {
-    const url = document.getElementById('jobUrl').value.trim();
-
-    if (!url) {
-        showToast('Please enter a URL', 'error');
-        return;
-    }
-
-    if (!url.startsWith('http')) {
-        showToast('Invalid URL format. URL must start with http:// or https://', 'error');
-        return;
-    }
-
-    // Pre-fill apply link with the URL user entered
-    document.getElementById('apply_link').value = url;
-
-    // Show loading state
-    showLoading(true);
-    updateLoadingMessage('Accessing webpage...');
-
-    try {
-        // Call scrape API
-        const response = await fetch('/api/scrape', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ url: url })
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            currentJobData = result.data;
-            populateForm(currentJobData);
-            showResult(true);
-            showToast('✅ Successfully scraped! Please review the information', 'success');
-        } else {
-            showToast('❌ Scrape failed: ' + result.error, 'error');
-            showLoading(false);
-        }
-
-    } catch (error) {
-        console.error('Error:', error);
-        showToast('❌ Network error, please try again', 'error');
-        showLoading(false);
-    }
-}
-
-/**
  * Populate form with extracted data
  */
 function populateForm(data) {
@@ -69,7 +17,6 @@ function populateForm(data) {
         'location': 'location',
         'type': 'type',
         'degree': 'degree',
-        'visa_sponsorship': 'visa_sponsorship',
         'deadline': 'deadline',
         'target_year': 'target_year',
         'salary': 'salary',
@@ -98,6 +45,31 @@ function populateForm(data) {
         }
     }
 
+    // NEW: Map degree_min to degree select (convert values)
+    const degreeElement = document.getElementById('degree');
+    if (degreeElement && data['degree_min']) {
+        const degreeMap = {
+            'bachelor': 'Bachelor',
+            'master': 'Master',
+            'phd': 'PhD',
+            'any': 'Any'
+        };
+        const mappedValue = degreeMap[data['degree_min']] || 'Any';
+        degreeElement.value = mappedValue;
+    }
+
+    // NEW: Map visa_sponsorship + visa_mentioned to visa_sponsorship select
+    const visaElement = document.getElementById('visa_sponsorship');
+    if (visaElement && data['visa_sponsorship'] !== undefined) {
+        if (data['visa_mentioned'] === 'case_by_case') {
+            visaElement.value = 'Case by case';
+        } else if (data['visa_sponsorship'] === true) {
+            visaElement.value = 'Yes';
+        } else if (data['visa_sponsorship'] === false) {
+            visaElement.value = data['visa_mentioned'] === 'not_mentioned' ? 'Not mentioned' : 'No';
+        }
+    }
+
     // Special handling for preferred_major (array field)
     const majorElement = document.getElementById('preferred_major');
     if (majorElement && data['preferred_major'] && Array.isArray(data['preferred_major'])) {
@@ -110,6 +82,30 @@ function populateForm(data) {
     if (skillsElement && data['skills_tags'] && Array.isArray(data['skills_tags'])) {
         // Join array with comma for display
         skillsElement.value = data['skills_tags'].join(', ');
+    }
+
+    // NEW: Special handling for perks (array field)
+    const perksElement = document.getElementById('perks');
+    if (perksElement && data['perks'] && Array.isArray(data['perks'])) {
+        perksElement.value = data['perks'].join(', ');
+    }
+
+    // NEW: Handle requirements field
+    if (data['requirements']) {
+        document.getElementById('requirements').value = data['requirements'];
+    }
+
+    // NEW: Handle visa_source and visa_likelihood (hidden fields)
+    if (data['visa_source']) {
+        document.getElementById('visa_source').value = data['visa_source'];
+    }
+    if (data['visa_likelihood']) {
+        document.getElementById('visa_likelihood').value = data['visa_likelihood'];
+    }
+
+    // NEW: Display visa info badge if from company history
+    if (data['visa_source'] === 'company_history') {
+        displayVisaInfoBadge(data);
     }
 
     // Update confidence score
@@ -151,14 +147,49 @@ async function saveJob(event) {
     }
 
     // Gather form data
+    const degreeValue = document.getElementById('degree').value;
+    const visaValue = document.getElementById('visa_sponsorship').value;
+
+    // Map degree values to backend format
+    const degreeMap = {
+        'Any': 'any',
+        'Bachelor': 'bachelor',
+        'Master': 'master',
+        'MBA': 'master',
+        'PhD': 'phd',
+        'Preferred': ''
+    };
+
+    // Map visa values to backend format
+    let visaSponsorshipBool = false;
+    let visaMentionedValue = 'not_mentioned';
+
+    if (visaValue === 'Yes') {
+        visaSponsorshipBool = true;
+        visaMentionedValue = 'explicit_yes';
+    } else if (visaValue === 'No') {
+        visaSponsorshipBool = false;
+        visaMentionedValue = 'explicit_no';
+    } else if (visaValue === 'Case by case') {
+        visaSponsorshipBool = true;
+        visaMentionedValue = 'case_by_case';
+    } else if (visaValue === 'Not mentioned') {
+        visaSponsorshipBool = false;
+        visaMentionedValue = 'not_mentioned';
+    }
+
     const formData = {
         company: document.getElementById('company').value,
         title: document.getElementById('title').value,
         industry: document.getElementById('industry').value,
         location: document.getElementById('location').value,
         type: document.getElementById('type').value,
-        degree: document.getElementById('degree').value,
-        visa_sponsorship: document.getElementById('visa_sponsorship').value,
+        // NEW: Map degree to degree_min
+        degree_min: degreeMap[degreeValue] || 'any',
+        degree_preferred: '', // Will be filled if user adds separate preferred field
+        // NEW: Map visa to boolean + visa_mentioned
+        visa_sponsorship: visaSponsorshipBool,
+        visa_mentioned: visaMentionedValue,
         deadline: document.getElementById('deadline').value,
         target_year: document.getElementById('target_year').value,
         salary: document.getElementById('salary').value,
@@ -169,6 +200,10 @@ async function saveJob(event) {
         job_level: document.getElementById('job_level').value,
         work_mode: document.getElementById('work_mode').value,
         target_audience: document.getElementById('target_audience').value,
+        // NEW: requirements and perks
+        requirements: document.getElementById('requirements').value,
+        visa_source: document.getElementById('visa_source').value,
+        visa_likelihood: document.getElementById('visa_likelihood').value,
     };
 
     // Handle skills_tags (comma-separated to array)
@@ -185,6 +220,14 @@ async function saveJob(event) {
         formData.preferred_major = majorValue.split(',').map(s => s.trim()).filter(s => s);
     } else {
         formData.preferred_major = [];
+    }
+
+    // NEW: Handle perks (comma-separated to array)
+    const perksValue = document.getElementById('perks').value;
+    if (perksValue && perksValue.trim()) {
+        formData.perks = perksValue.split(',').map(s => s.trim()).filter(s => s);
+    } else {
+        formData.perks = [];
     }
 
     // Add company info if available
@@ -205,12 +248,18 @@ async function saveJob(event) {
     }
 
     // Validate required fields
-    const required = ['company', 'title', 'location', 'visa_sponsorship', 'deadline', 'apply_link'];
+    const required = ['company', 'title', 'location', 'deadline', 'apply_link'];
     for (const field of required) {
         if (!formData[field]) {
             showToast(`Please fill required field: ${field}`, 'error');
             return;
         }
+    }
+
+    // Special validation for visa_sponsorship (boolean field)
+    if (formData['visa_sponsorship'] === undefined || formData['visa_sponsorship'] === null) {
+        showToast('Please fill required field: visa_sponsorship', 'error');
+        return;
     }
 
     // Get the save button (from event or find it in DOM)
@@ -277,20 +326,15 @@ async function saveJob(event) {
  */
 function showLoading(show) {
     const loadingState = document.getElementById('loadingState');
-    const scrapeBtn = document.getElementById('scrapeBtn');
     const resultState = document.getElementById('resultState');
     const successState = document.getElementById('successState');
 
     if (show) {
         loadingState.classList.remove('hidden');
-        scrapeBtn.disabled = true;
-        scrapeBtn.textContent = '⏳ Scraping...';
         resultState.classList.add('hidden');
         successState.classList.add('hidden');
     } else {
         loadingState.classList.add('hidden');
-        scrapeBtn.disabled = false;
-        scrapeBtn.textContent = '🔍 Scrape Job';
     }
 }
 
@@ -307,14 +351,12 @@ function updateLoadingMessage(message) {
 function showResult(show) {
     const loadingState = document.getElementById('loadingState');
     const resultState = document.getElementById('resultState');
-    const scrapeBtn = document.getElementById('scrapeBtn');
 
     showLoading(false);
 
     if (show) {
         resultState.classList.remove('hidden');
         resultState.classList.add('fade-in');
-        scrapeBtn.textContent = '🔄 Scrape New Job';
 
         // Reset save button state
         const saveBtn = document.querySelector('#resultState button[onclick*="saveJob"]');
@@ -349,8 +391,9 @@ function showSuccess(show) {
  * Reset form to initial state
  */
 function resetForm() {
-    // Clear form
-    document.getElementById('jobUrl').value = '';
+    // Clear text input
+    document.getElementById('jobText').value = '';
+    document.getElementById('jobUrlForText').value = '';
     document.getElementById('jobForm').reset();
 
     // Hide states
@@ -363,42 +406,19 @@ function resetForm() {
         companyCard.classList.add('hidden');
     }
 
-    // Reset button
-    const scrapeBtn = document.getElementById('scrapeBtn');
-    scrapeBtn.disabled = false;
-    scrapeBtn.textContent = '🔍 Scrape Job';
-
     // Clear data
     currentJobData = null;
 
-    showToast('Ready to scrape a new job', 'info');
+    showToast('Ready to extract a new job', 'info');
 }
 
 /**
  * Cancel operation
  */
 function cancelForm() {
-    if (confirm('Are you sure you want to cancel? All scraped data will be lost.')) {
+    if (confirm('Are you sure you want to cancel? All extracted data will be lost.')) {
         resetForm();
     }
-}
-
-/**
- * Switch to URL mode after successful save
- */
-function switchToUrlMode() {
-    resetForm();
-    setInputMode('url');
-    showToast('Ready to scrape from URL', 'info');
-}
-
-/**
- * Switch to text mode after successful save
- */
-function switchToTextMode() {
-    resetForm();
-    setInputMode('text');
-    showToast('Ready to extract from text', 'info');
 }
 
 /**
@@ -437,28 +457,6 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.remove();
     }, 5000);
-}
-
-/**
- * Toggle between URL and text input modes
- */
-function setInputMode(mode) {
-    const urlMode = document.getElementById('urlMode');
-    const textMode = document.getElementById('textMode');
-    const urlModeBtn = document.getElementById('urlModeBtn');
-    const textModeBtn = document.getElementById('textModeBtn');
-
-    if (mode === 'url') {
-        urlMode.classList.remove('hidden');
-        textMode.classList.add('hidden');
-        urlModeBtn.className = 'px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white';
-        textModeBtn.className = 'px-4 py-2 rounded-lg font-semibold bg-gray-200 text-gray-700';
-    } else {
-        urlMode.classList.add('hidden');
-        textMode.classList.remove('hidden');
-        urlModeBtn.className = 'px-4 py-2 rounded-lg font-semibold bg-gray-200 text-gray-700';
-        textModeBtn.className = 'px-4 py-2 rounded-lg font-semibold bg-purple-600 text-white';
-    }
 }
 
 /**
@@ -512,21 +510,6 @@ async function extractFromText() {
 }
 
 /**
- * Handle Enter key in URL input
- */
-document.addEventListener('DOMContentLoaded', function() {
-    const urlInput = document.getElementById('jobUrl');
-    if (urlInput) {
-        urlInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                scrapeJob();
-            }
-        });
-    }
-});
-
-/**
  * Display company information card
  */
 function displayCompanyInfo(companyInfo) {
@@ -542,7 +525,7 @@ function displayCompanyInfo(companyInfo) {
     document.getElementById('display_employee_count').textContent = companyInfo.employee_count || '-';
     document.getElementById('display_funding_stage').textContent = companyInfo.funding_stage || '-';
     document.getElementById('display_hq_location').textContent = companyInfo.hq_location || '-';
-    document.getElementById('display_year_founded').textContent = companyInfo.year_founded || '-';
+    document.getElementById('display_year_founded').textContent = companyInfo.year_founded || '';
 
     // Update website link
     const websiteLink = document.getElementById('display_company_website');
@@ -567,6 +550,61 @@ function displayCompanyInfo(companyInfo) {
     document.getElementById('edit_year_founded').value = companyInfo.year_founded || '';
     document.getElementById('edit_company_website').value = companyInfo.company_website || '';
     document.getElementById('company_domain').value = companyInfo.domain || '';
+}
+
+/**
+ * NEW: Display visa information badge
+ */
+function displayVisaInfoBadge(jobData) {
+    const display = document.getElementById('visaInfoDisplay');
+    if (!display) return;
+
+    const visaSource = jobData.visa_source || 'unknown';
+    const visaLikelihood = jobData.visa_likelihood || 'unknown';
+
+    // Source labels
+    const sourceLabels = {
+        'jd_explicit': 'JD明确说明',
+        'company_history': '公司历史数据',
+        'unknown': '未知'
+    };
+
+    // Likelihood labels
+    const likelihoodLabels = {
+        'high': '高可能性',
+        'medium': '中等可能性',
+        'low': '低可能性',
+        'unknown': '未知'
+    };
+
+    // Colors
+    const likelihoodColors = {
+        'high': 'text-green-600',
+        'medium': 'text-yellow-600',
+        'low': 'text-red-600',
+        'unknown': 'text-gray-600'
+    };
+
+    const sourceLabel = sourceLabels[visaSource] || visaSource;
+    const likelihoodLabel = likelihoodLabels[visaLikelihood] || visaLikelihood;
+    const likelihoodColor = likelihoodColors[visaLikelihood] || 'text-gray-600';
+
+    // Build HTML
+    let html = '<div class="flex items-center space-x-2">';
+    html += `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">${sourceLabel}</span>`;
+
+    if (visaLikelihood !== 'unknown') {
+        html += `<span class="text-xs ${likelihoodColor} px-2 py-1 rounded">${likelihoodLabel}</span>`;
+    }
+
+    if (visaSource === 'company_history' && jobData.visa_note) {
+        html += `<span class="text-xs text-gray-500 italic">${jobData.visa_note}</span>`;
+    }
+
+    html += '</div>';
+
+    display.innerHTML = html;
+    display.parentElement.classList.remove('hidden'); // Show the display div
 }
 
 /**

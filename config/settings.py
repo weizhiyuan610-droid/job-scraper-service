@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     """Application settings"""
 
     # API Keys
-    gemini_api_key: str = ""
+    claude_api_key: str = ""
+    gemini_api_key: str = ""  # Fallback for Gemini
 
     # Google Sheets Configuration
     google_sheet_id: str = ""
@@ -27,7 +28,7 @@ class Settings(BaseSettings):
     delay_between_requests: int = 2
 
     # AI Configuration
-    ai_model: str = "gemini-3.1-flash-lite-preview"
+    ai_model: str = "gemini-2.5-flash"
     ai_temperature: float = 0.1
     ai_simple_mode: bool = True  # Use simplified prompt for faster processing
 
@@ -65,7 +66,9 @@ def get_google_credentials() -> dict:
     credentials_str = settings.google_credentials_json
 
     # DEBUG: Show first 300 chars of raw environment variable
+    logger.info(f"[DEBUG] Raw credentials_str length: {len(credentials_str)}")
     logger.info(f"[DEBUG] Raw credentials_str (first 300 chars): {repr(credentials_str[:300])}")
+    logger.info(f"[DEBUG] Raw credentials_str (last 200 chars): {repr(credentials_str[-200:])}")
 
     # Try parsing as-is first
     try:
@@ -81,6 +84,8 @@ def get_google_credentials() -> dict:
             while '\\t' in creds['private_key']:
                 creds['private_key'] = creds['private_key'].replace('\\t', '\t')
             logger.info(f"[DEBUG] private_key after newline fix (first 200 chars): {repr(creds['private_key'][:200])}")
+            logger.info(f"[DEBUG] private_key after newline fix (last 200 chars): {repr(creds['private_key'][-200:])}")
+            logger.info(f"[DEBUG] private_key ends with END: {creds['private_key'].endswith('-----END PRIVATE KEY-----')}")
         return creds
     except json.JSONDecodeError as e:
         logger.warning(f"Failed to parse credentials JSON directly: {e}")
@@ -135,8 +140,9 @@ def validate_settings() -> list[str]:
     """
     missing = []
 
-    if not settings.gemini_api_key:
-        missing.append("GEMINI_API_KEY")
+    # Check for at least one AI API key
+    if not settings.claude_api_key and not settings.gemini_api_key:
+        missing.append("CLAUDE_API_KEY or GEMINI_API_KEY")
 
     if not settings.google_sheet_id:
         missing.append("GOOGLE_SHEET_ID")

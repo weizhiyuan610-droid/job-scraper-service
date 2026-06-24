@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>使用教程 - Event Horizon Lab 职位数据提取工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 16px;
+            border-left: 4px solid #667eea;
+            padding-left: 12px;
+        }
+
+        .section h3 {
+            font-size: 18px;
+            color: #555;
+            margin: 16px 0 8px;
+        }
+
+        .section p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+
+        .step-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .step-list li {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 16px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .step-number {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 16px;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-content h4 {
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .step-content p {
+            color: #666;
+            margin: 0;
+        }
+
+        .info-box {
+            background: #e8f4fd;
+            border-left: 4px solid #2196f3;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+
+        .info-box.warning {
+            background: #fff3e0;
+            border-left-color: #ff9800;
+        }
+
+        .info-box.success {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+        }
+
+        .info-box-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        table tr:hover {
+            background: #f8f9fa;
+        }
+
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #e83e8c;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .badge-warning {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .badge-info {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .highlight {
+            background: #fff9c4;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .step-list li {
+                flex-direction: column;
+            }
+
+            .step-number {
+                margin-bottom: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← 返回主页</a>
+
+        <div class="header">
+            <h1>📖 使用教程</h1>
+            <p>快速掌握职位数据提取工具的使用方法</p>
+        </div>
+
+        <div class="section">
+            <h2>🎯 工作流程概述</h2>
+            <div class="info-box success">
+                <div class="info-box-title">简单四步，完成职位数据录入</div>
+                <p>复制职位描述 → AI 提取 → 预览确认 → 保存到表格</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>📝 详细使用步骤</h2>
+            <ul class="step-list">
+                <li>
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h4>复制职位描述</h4>
+                        <p>从招聘网站（LinkedIn、公司官网、Greenhouse 等）复制完整的职位描述文本。</p>
+                        <div class="info-box warning">
+                            <div class="info-box-title">💡 提示</div>
+                            <p>建议复制包含职位要求、职责描述、福利待遇的完整文本，提取效果更佳。</p>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h4>粘贴并提取</h4>
+                        <p>将文本粘贴到输入框，点击"提取数据"按钮。Claude AI 会自动分析并填充所有字段。</p>
+                    </div>
+                </li>
+                <li>
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h4>检查和修正</h4>
+                        <p>仔细检查提取的数据，<span class="highlight">重点关注以下字段</span>：</p>
+                        <ul style="margin-top: 8px; padding-left: 20px; color: #666;">
+                            <li>签证赞助 (VisaSponsorship)</li>
+                            <li>截止日期 (Deadline)</li>
+                            <li>学位要求 (Degree)</li>
+                            <li>申请链接 (ApplicationUrl)</li>
+                        </ul>
+                    </div>
+                </li>
+                <li>
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <h4>保存到 Google Sheets</h4>
+                        <p>确认无误后，点击"保存"按钮。数据将自动写入指定的工作表。</p>
+                    </div>
+                </li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>🎯 支持的数据来源</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>来源</th>
+                        <th>难度</th>
+                        <th>说明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="badge badge-success">推荐</span> Greenhouse</td>
+                        <td><span class="badge badge-success">容易</span></td>
+                        <td>统一格式，提取效果最佳</td>
+                    </tr>
+                    <tr>
+                        <td><span class="badge badge-success">推荐</span> Workday</td>
+                        <td><span class="badge badge-success">容易</span></td>
+                        <td>大部分职位可正常提取</td>
+                    </tr>
+                    <tr>
+                        <td>咨询公司官网</td>
+                        <td><span class="badge badge-success">容易</span></td>
+                        <td>McKinsey, BCG, Bain 等</td>
+                    </tr>
+                    <tr>
+                        <td>投行官网</td>
+                        <td><span class="badge badge-success">容易</span></td>
+                        <td>Goldman Sachs, JPMorgan 等</td>
+                    </tr>
+                    <tr>
+                        <td>LinkedIn</td>
+                        <td><span class="badge badge-warning">中等</span></td>
+                        <td>需要手动打开职位页面复制</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>📊 提取的数据字段（44列）</h2>
+            <h3>基础信息（8列）</h3>
+            <p>公司名称、职位名称、行业、地点、薪资、签证状态、截止日期、ID</p>
+
+            <h3>学位与要求（3列）</h3>
+            <p>优选专业、目标年级、学位要求（最低/优选）</p>
+
+            <h3>职位详情（10列）</h3>
+            <p>职位类型、描述、申请链接、状态、技能标签、部门、职级、工作模式、目标受众、薪资范围</p>
+
+            <h3>公司信息（8列）</h3>
+            <p>公司规模、员工数、融资阶段、总部地点、成立年份、公司层级、官网、域名</p>
+
+            <h3>精确解析字段（5列）</h3>
+            <p>最低学位、优选学位、签证提及状态、签证备注、原始描述</p>
+
+            <h3>评分字段（6列）</h3>
+            <p>优先级分数、紧急度分数、新鲜度分数、质量分数、可匹配性分数、计算时间</p>
+
+            <h3>增强字段（4列）</h3>
+            <p>职位要求、福利待遇、签证信息来源、签证可能性</p>
+        </div>
+
+        <div class="section">
+            <h2>🔍 签证信息说明</h2>
+            <div class="info-box info">
+                <div class="info-box-title">签证信息来源 (VisaSource)</div>
+                <p>系统通过两种方式判断签证赞助情况：</p>
+                <ul style="margin-top: 8px; padding-left: 20px;">
+                    <li><code>jd_explicit</code>：职位描述中明确说明</li>
+                    <li><code>company_history</code>：基于公司历史数据推测</li>
+                </ul>
+            </div>
+
+            <div class="info-box info">
+                <div class="info-box-title">签证可能性 (VisaLikelihood)</div>
+                <p>根据 JD 内容和公司历史数据综合评估：</p>
+                <ul style="margin-top: 8px; padding-left: 20px;">
+                    <li><code>high</code>：明确提供或有历史记录</li>
+                    <li><code>medium</code>：可能提供（case by case）</li>
+                    <li><code>low</code>：明确不提供</li>
+                    <li><code>unknown</code>：未知</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>⚠️ 常见问题</h2>
+
+            <h3>Q：某些字段没有提取出来怎么办？</h3>
+            <p>A：检查输入的职位描述是否完整。如果 JD 格式特殊或信息缺失，可以手动填写缺失字段。</p>
+
+            <h3>Q：提取的公司信息不准确？</h3>
+            <p>A：系统会根据公司名称自动匹配公司数据库。如果公司不在数据库中，会使用 AI 进行推测。建议手动确认关键信息。</p>
+
+            <h3>Q：如何判断签证信息是否准确？</h3>
+            <p>A：优先查看 <code>VisaSource</code> 字段。如果是 <code>jd_explicit</code>，说明 JD 中明确提到；如果是 <code>company_history</code>，说明是基于公司历史推测，建议进一步核实。</p>
+
+            <h3>Q：保存时提示"职位已存在"？</h3>
+            <p>A：系统会检查公司名称和职位标题是否重复。如果确实是同一个职位，请勿重复录入。</p>
+        </div>
+
+        <div class="section">
+            <h2>📈 评分系统说明</h2>
+            <p>系统会自动计算以下分数，帮助您筛选和排序职位：</p>
+
+            <table>
+                <tr>
+                    <th>分数类型</th>
+                    <th>范围</th>
+                    <th>用途</th>
+                </tr>
+                <tr>
+                    <td>优先级分数</td>
+                    <td>0-100</td>
+                    <td>综合排序（签证+公司层级+截止日期）</td>
+                </tr>
+                <tr>
+                    <td>紧急度分数</td>
+                    <td>0-100</td>
+                    <td>标记即将截止的职位</td>
+                </tr>
+                <tr>
+                    <td>质量分数</td>
+                    <td>0-100</td>
+                    <td>过滤低质量职位</td>
+                </tr>
+                <tr>
+                    <td>可匹配性分数</td>
+                    <td>0-100</td>
+                    <td>个性化推荐匹配度</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>💡 使用建议</h2>
+            <ul style="padding-left: 20px; color: #666; line-height: 1.8;">
+                <li>✅ 每次复制完整的 JD 文本，包含要求和福利部分</li>
+                <li>✅ 重点检查签证赞助和截止日期字段</li>
+                <li>✅ 对于知名公司，公司信息会自动填充准确</li>
+                <li>✅ 利用评分系统筛选高价值职位</li>
+                <li>❌ 不要重复录入相同的职位</li>
+                <li>❌ 不要使用过于简短的职位描述</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

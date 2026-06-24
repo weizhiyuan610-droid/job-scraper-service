@@ -5,9 +5,9 @@ Flask Web Application
 import os
 import logging
 from flask import Flask, render_template, request, jsonify
-from scraper.playwright_scraper import scrape_page_sync
 from scraper import AIExtractor, SheetsWriter
 from scraper.company_inference import get_company_inference
+from scraper.visa_enhancer import VisaEnhancer
 from models import JobData, CompanyInfo
 from config import settings, validate_settings, get_google_credentials
 
@@ -66,254 +66,40 @@ def enrich_job_with_company_info(job_data: dict) -> dict:
     return job_data
 
 
+def enrich_job_with_visa_info(job_data: dict) -> dict:
+    """
+    Enhance job data with visa information using company history database
+
+    This function is called after AI extraction to fill in visa information
+    when the JD doesn't explicitly mention visa sponsorship.
+
+    Args:
+        job_data: Job data dictionary
+
+    Returns:
+        Updated job data with visa_source and visa_likelihood fields
+    """
+    try:
+        visa_enhancer = VisaEnhancer()
+        enhanced_data = visa_enhancer.enhance_visa_info(job_data)
+
+        company_name = job_data.get('company', '')
+        logger.info(f"Enhanced visa info for {company_name}: source={enhanced_data.get('visa_source')}, likelihood={enhanced_data.get('visa_likelihood')}")
+
+        return enhanced_data
+
+    except Exception as e:
+        logger.error(f"Error enhancing visa info: {e}", exc_info=True)
+        # Set default values on error
+        job_data['visa_source'] = 'error'
+        job_data['visa_likelihood'] = 'unknown'
+        return job_data
+
+
 @app.route('/tutorial')
 def tutorial():
     """Render tutorial page"""
     return render_template('tutorial.html')
-
-
-@app.route('/api/scrape', methods=['POST'])
-def scrape():
-    """
-    API endpoint to scrape a job posting
-
-    Expects JSON body:
-    {
-        "url": "https://example.com/job-posting"
-    }
-
-    Returns:
-    {
-        "success": true/false,
-        "data": { extracted job fields },
-        "error": "error message if failed"
-    }
-    """
-    try:
-        data = request.get_json()
-        if not data or 'url' not in data:
-            return jsonify({
-                "success": False,
-                "error": "Missing URL in request body"
-            }), 400
-
-        url = data['url'].strip()
-
-        if not url.startswith('http'):
-            return jsonify({
-                "success": False,
-                "error": "Invalid URL format"
-            }), 400
-
-        logger.info(f"Scraping URL: {url}")
-
-        # Step 1: Scrape web page
-        logger.info("Step 1: Scraping web page...")
-        scrape_result = scrape_page_sync(url, settings.headless_browser)
-
-        if not scrape_result.get('success'):
-            return jsonify({
-                "success": False,
-                "error": f"Failed to scrape page: {scrape_result.get('error', 'Unknown error')}"
-            }), 400
-
-        page_content = scrape_result['content']
-        logger.info(f"Scraped content length: {len(page_content)} characters")
-
-        # Step 2: Extract job data using AI
-        logger.info("Step 2: Extracting job data with AI...")
-        extractor = AIExtractor(api_key=settings.gemini_api_key, model=settings.ai_model)
-        extract_result = extractor.extract_job_data(
-            page_content,
-            simple_mode=settings.ai_simple_mode
-        )
-
-        if not extract_result.get('success'):
-            return jsonify({
-                "success": False,
-                "error": f"Failed to extract data: {extract_result.get('error', 'Unknown error')}"
-            }), 400
-
-        job_data = extract_result['data']
-
-        # Step 3: Enrich with company information
-        logger.info("Step 3: Enriching with company information...")
-        job_data = enrich_job_with_company_info(job_data)
-
-        # Validate with Pydantic
-        try:
-            job = JobData(**job_data)
-            job_dict = job.model_dump()
-
-            # Add metadata
-            job_dict['source_url'] = url
-            job_dict['scraped_at'] = scrape_result.get('metadata', {}).get('timestamp', '')
-
-            # Calculate confidence score
-            if 'validation' in extract_result:
-                job_dict['confidence_score'] = extract_result['validation']['confidence_score']
-                job_dict['validation'] = extract_result['validation']
-            else:
-                job_dict['confidence_score'] = 85  # Default
-
-            logger.info(f"Successfully extracted: {job.company} - {job.title}")
-
-            return jsonify({
-                "success": True,
-                "data": job_dict,
-                "message": "Job data extracted successfully"
-            })
-
-        except Exception as e:
-            logger.error(f"Validation error: {str(e)}")
-            return jsonify({
-                "success": False,
-                "error": f"Data validation failed: {str(e)}"
-            }), 400
-
-    except Exception as e:
-        logger.error(f"Unexpected error in scrape endpoint: {str(e)}", exc_info=True)
-        return jsonify({
-            "success": False,
-            "error": f"Internal server error: {str(e)}"
-        }), 500
-
-
-@app.route('/api/scrape-batch', methods=['POST'])
-def scrape_batch():
-    """
-    API endpoint to scrape multiple job postings in parallel
-
-    Expects JSON body:
-    {
-        "urls": ["url1", "url2", "url3"]
-    }
-
-    Returns:
-    {
-        "success": true/false,
-        "results": [{ extracted job data for each URL }],
-        "errors": ["error messages"]
-    }
-    """
-    try:
-        data = request.get_json()
-        if not data or 'urls' not in data:
-            return jsonify({
-                "success": False,
-                "error": "Missing URLs in request body"
-            }), 400
-
-        urls = data['urls']
-        if not isinstance(urls, list):
-            return jsonify({
-                "success": False,
-                "error": "URLs must be a list"
-            }), 400
-
-        if len(urls) == 0:
-            return jsonify({
-                "success": False,
-                "error": "URLs list is empty"
-            }), 400
-
-        if len(urls) > 20:
-            return jsonify({
-                "success": False,
-                "error": "Maximum 20 URLs allowed per batch"
-            }), 400
-
-        logger.info(f"Batch scraping {len(urls)} URLs...")
-
-        # Import the batch scrape function
-        from scraper.playwright_scraper import scrape_multiple_sync
-
-        # Step 1: Scrape all web pages
-        logger.info("Step 1: Scraping web pages in parallel...")
-        scrape_results = scrape_multiple_sync(urls, headless=settings.headless_browser)
-
-        # Step 2: Extract job data using AI for each successful scrape
-        logger.info("Step 2: Extracting job data with AI...")
-        extractor = AIExtractor(api_key=settings.gemini_api_key, model=settings.ai_model)
-
-        results = []
-        errors = []
-
-        for i, scrape_result in enumerate(scrape_results):
-            url = urls[i]
-
-            if not scrape_result.get('success'):
-                errors.append({
-                    "url": url,
-                    "error": f"Scraping failed: {scrape_result.get('error', 'Unknown error')}"
-                })
-                continue
-
-            page_content = scrape_result['content']
-            logger.info(f"Processing URL {i+1}/{len(urls)}: {url}")
-
-            # Extract job data using AI
-            extract_result = extractor.extract_job_data(
-                page_content,
-                simple_mode=settings.ai_simple_mode
-            )
-
-            if not extract_result.get('success'):
-                errors.append({
-                    "url": url,
-                    "error": f"AI extraction failed: {extract_result.get('error', 'Unknown error')}"
-                })
-                continue
-
-            job_data = extract_result['data']
-
-            # Enrich with company information
-            job_data = enrich_job_with_company_info(job_data)
-
-            # Validate with Pydantic
-            try:
-                job = JobData(**job_data)
-                job_dict = job.model_dump()
-
-                # Add metadata
-                job_dict['source_url'] = url
-                job_dict['scraped_at'] = scrape_result.get('metadata', {}).get('timestamp', '')
-
-                # Calculate confidence score
-                if 'validation' in extract_result:
-                    job_dict['confidence_score'] = extract_result['validation']['confidence_score']
-                    job_dict['validation'] = extract_result['validation']
-                else:
-                    job_dict['confidence_score'] = 85
-
-                logger.info(f"Successfully extracted: {job.company} - {job.title}")
-                results.append(job_dict)
-
-            except Exception as e:
-                logger.error(f"Validation error for {url}: {str(e)}")
-                errors.append({
-                    "url": url,
-                    "error": f"Validation failed: {str(e)}"
-                })
-
-        return jsonify({
-            "success": True,
-            "results": results,
-            "errors": errors,
-            "summary": {
-                "total": len(urls),
-                "successful": len(results),
-                "failed": len(errors)
-            },
-            "message": f"Batch processing complete: {len(results)} successful, {len(errors)} failed"
-        })
-
-    except Exception as e:
-        logger.error(f"Unexpected error in scrape-batch endpoint: {str(e)}", exc_info=True)
-        return jsonify({
-            "success": False,
-            "error": f"Internal server error: {str(e)}"
-        }), 500
 
 
 @app.route('/api/extract-from-text', methods=['POST'])
@@ -357,7 +143,14 @@ def extract_from_text():
 
         # Extract job data using AI (skip web scraping)
         logger.info("Extracting job data with AI...")
-        extractor = AIExtractor(api_key=settings.gemini_api_key, model=settings.ai_model)
+
+        # Select API key based on model
+        if settings.ai_model.startswith('claude'):
+            api_key = settings.claude_api_key
+        else:
+            api_key = settings.gemini_api_key
+
+        extractor = AIExtractor(api_key=api_key, model=settings.ai_model)
         extract_result = extractor.extract_job_data(
             text,
             simple_mode=settings.ai_simple_mode
@@ -373,6 +166,9 @@ def extract_from_text():
 
         # Enrich with company information
         job_data = enrich_job_with_company_info(job_data)
+
+        # Enhance visa information
+        job_data = enrich_job_with_visa_info(job_data)
 
         # Validate with Pydantic
         try:
@@ -558,10 +354,10 @@ def update_headers():
     This endpoint updates the header row to include all new columns
 
     Returns:
-        {
-            "success": true/false,
-            "message": "Headers updated successfully"
-        }
+    {
+        "success": true/false,
+        "message": "Headers updated successfully"
+    }
     """
     try:
         # Define the new headers (enhanced with precise parsing fields)
@@ -576,6 +372,11 @@ def update_headers():
             # NEW: Enhanced parsing fields for precise analysis
             'DegreeMin', 'DegreePreferred', 'VisaMentioned', 'VisaNote',
             'RawDescription',
+            # Pre-computed scores
+            'priority_score', 'urgency_score', 'freshness_score',
+            'quality_score', 'matchability_score', 'scores_calculated_at',
+            # NEW: Enhanced visa tracking + requirements + perks
+            'Requirements', 'Perks', 'VisaSource', 'VisaLikelihood',
         ]
 
         credentials = get_google_credentials()
@@ -591,9 +392,9 @@ def update_headers():
             sheet_name=settings.google_sheet_name
         )
 
-        # Calculate the range (e.g., A1:AC1)
-        # We have 29 headers (A-AC), where AC = 28 (0-indexed)
+        # Calculate the range (e.g., A1:AR1)
         # For 1-26: A-Z, for 27-52: AA-AZ, for 53-78: BA-BZ, etc.
+        # We have 44 headers (A-AR), where AR = 44 (1-indexed)
         num_cols = len(headers)
         if num_cols <= 26:
             end_col = chr(64 + num_cols)  # A=65, so A=1, B=2, ..., Z=26
@@ -635,11 +436,11 @@ def validate_links():
         limit: Number of jobs to check (default: 50)
 
     Returns:
-        {
-            "success": true/false,
-            "summary": {"total": 50, "valid": 45, "invalid": 5, "checked": 50, "remaining": 102},
-            "results": [{link validation details}]
-        }
+    {
+        "success": true/false,
+        "summary": {"total": 50, "valid": 45, "invalid": 5, "checked": 50, "remaining": 102},
+        "results": [{link validation details}]
+    }
     """
     try:
         # Get batch parameters
@@ -741,6 +542,7 @@ def main():
     """Run the Flask application"""
     # Log all environment variables for debugging (without values)
     logger.info("=== Environment Variables ===")
+    logger.info(f"CLAUDE_API_KEY: {'✓ Set' if settings.claude_api_key else '✗ Missing'}")
     logger.info(f"GEMINI_API_KEY: {'✓ Set' if settings.gemini_api_key else '✗ Missing'}")
     logger.info(f"GOOGLE_SHEET_ID: {'✓ Set' if settings.google_sheet_id else '✗ Missing'}")
     logger.info(f"GOOGLE_CREDENTIALS_JSON: {'✓ Set' if settings.google_credentials_json else '✗ Missing'}")

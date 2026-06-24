@@ -47,8 +47,41 @@ KNOWN_COMPANIES = {
         "industry": "Consulting",
         "hq_location": "London, UK",
         "year_founded": "1845",
-        "tier": "Tier 2",
+        "tier": "Tier 1",
         "website": "https://www.deloitte.com"
+    },
+    "KPMG": {
+        "domain": "kpmg.com",
+        "size_category": "Enterprise",
+        "employee_count": "265,000+",
+        "funding_stage": "Private",
+        "industry": "Consulting",
+        "hq_location": "Amstelveen, Netherlands",
+        "year_founded": "1987",
+        "tier": "Tier 1",
+        "website": "https://www.kpmg.com"
+    },
+    "PwC": {
+        "domain": "pwc.com",
+        "size_category": "Enterprise",
+        "employee_count": "360,000+",
+        "funding_stage": "Private",
+        "industry": "Consulting",
+        "hq_location": "London, UK",
+        "year_founded": "1998",
+        "tier": "Tier 1",
+        "website": "https://www.pwc.com"
+    },
+    "EY": {
+        "domain": "ey.com",
+        "size_category": "Enterprise",
+        "employee_count": "365,000+",
+        "funding_stage": "Private",
+        "industry": "Consulting",
+        "hq_location": "London, UK",
+        "year_founded": "1989",
+        "tier": "Tier 1",
+        "website": "https://www.ey.com"
     },
     "Accenture": {
         "domain": "accenture.com",
@@ -857,6 +890,10 @@ COMPANY_ALIASES = {
     "McKinsey & Company": ["McKinsey", "McKinsey & Company"],
     "Boston Consulting Group": ["BCG", "Boston Consulting Group"],
     "Bain & Company": ["Bain", "Bain & Company"],
+    "Deloitte": ["Deloitte", "Deloitte Touche Tohmatsu"],
+    "KPMG": ["KPMG", "KPMG International", "Klynveld Peat Marwick Goerdeler"],
+    "PwC": ["PwC", "PricewaterhouseCoopers", "Pricewaterhouse Coopers", "Price Waterhouse Coopers"],
+    "EY": ["EY", "Ernst & Young", "Ernst Young"],
     # Tech
     "Stripe": ["Stripe", "Stripe, Inc"],
     "Square": ["Square", "Block, Inc (Square)"],

@@ -1,32 +1,47 @@
 """
 AI-based company information inference
-Uses Gemini AI to estimate company details for unknown companies
+Uses Claude AI to estimate company details for unknown companies
 """
 import os
 import logging
 from typing import Optional, Dict
-import google.generativeai as genai
-from data.companies import get_company_info, SIZE_CATEGORIES, FUNDING_STAGES
+import requests
+from data.companies import get_company_info
 
 logger = logging.getLogger(__name__)
+
+# Claude API endpoint
+CLAUDE_API_BASE = "https://api.anthropic.com/v1/messages"
 
 
 class CompanyInfoInference:
     """AI-powered company information inference"""
 
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, model: str = "claude-3-5-haiku-20241022"):
         """
         Initialize AI inference engine
 
         Args:
-            api_key: Gemini API key (defaults to GEMINI_API_KEY env var)
+            api_key: Claude API key (defaults to CLAUDE_API_KEY env var)
+            model: Model to use for inference (Haiku is faster and cheaper for this task)
         """
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        if not self.api_key:
-            raise ValueError("GEMINI_API_KEY is required for company inference")
+        # Try to get API key from parameter, environment, or settings
+        if api_key:
+            self.api_key = api_key
+        else:
+            self.api_key = os.getenv("CLAUDE_API_KEY", "")
+            if not self.api_key:
+                try:
+                    from config import settings
+                    self.api_key = settings.claude_api_key
+                except:
+                    pass
 
-        genai.configure(api_key=self.api_key)
-        self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        if not self.api_key:
+            logger.warning("No Claude API key found, company inference will use defaults only")
+
+        self.model_name = model
+        self.api_url = CLAUDE_API_BASE
 
         # Cache for inferred companies
         self._inference_cache = {}
@@ -86,31 +101,78 @@ class CompanyInfoInference:
         Returns:
             Inferred company info dict
         """
+        if not self.api_key:
+            logger.warning("No API key for company inference, using defaults")
+            return self._get_default_info(company_name)
+
         prompt = self._build_inference_prompt(company_name, industry)
 
         try:
-            response = self.model.generate_content(prompt)
-            result = response.text.strip()
+            payload = {
+                "model": self.model_name,
+                "max_tokens": 1024,
+                "temperature": 0.1,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                "stream": False
+            }
+
+            headers = {
+                "x-api-key": self.api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json"
+            }
+
+            response = requests.post(
+                self.api_url,
+                json=payload,
+                headers=headers,
+                timeout=30  # 30 second timeout
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Company inference API error {response.status_code}")
+                return self._get_default_info(company_name)
+
+            result = response.json()
+
+            # Extract response text from Claude's response format
+            if 'content' not in result or len(result['content']) == 0:
+                logger.error("Empty response from company inference API")
+                return self._get_default_info(company_name)
+
+            result_text = result['content'][0].get('text', '')
+
+            if not result_text:
+                logger.error("Empty response text from company inference API")
+                return self._get_default_info(company_name)
 
             # Parse AI response
             import json
             try:
                 # Try to extract JSON from response
-                if "```json" in result:
-                    result = result.split("```json")[1].split("```")[0].strip()
-                elif "```" in result:
-                    result = result.split("```")[1].split("```")[0].strip()
+                if "```json" in result_text:
+                    result_text = result_text.split("```json")[1].split("```")[0].strip()
+                elif "```" in result_text:
+                    result_text = result_text.split("```")[1].split("```")[0].strip()
 
-                inferred = json.loads(result)
+                inferred = json.loads(result_text)
 
                 # Validate and normalize
                 return self._normalize_inferred_info(company_name, inferred)
 
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse AI response as JSON: {e}")
-                logger.debug(f"AI response was: {result}")
+                logger.debug(f"AI response was: {result_text[:300]}")
                 return self._get_default_info(company_name)
 
+        except requests.exceptions.Timeout:
+            logger.error(f"Company inference timed out for {company_name}")
+            return self._get_default_info(company_name)
         except Exception as e:
             logger.error(f"AI inference failed for {company_name}: {e}")
             return self._get_default_info(company_name)
@@ -246,10 +308,7 @@ def get_company_inference() -> CompanyInfoInference:
     """Get or create singleton inference instance"""
     global _inference_instance
     if _inference_instance is None:
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY environment variable is required")
-        _inference_instance = CompanyInfoInference(api_key=api_key)
+        _inference_instance = CompanyInfoInference()
     return _inference_instance
 
 

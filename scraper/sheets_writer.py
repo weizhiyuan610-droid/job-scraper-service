@@ -2,13 +2,89 @@
 Google Sheets writer using gspread
 """
 import os
+import tempfile
+import json
 import gspread
 from typing import Dict, Optional
 from oauth2client.service_account import ServiceAccountCredentials
 import logging
 from datetime import datetime
+import re
 
 logger = logging.getLogger(__name__)
+
+
+def fix_pem_format(private_key: str) -> str:
+    """
+    Fix PEM private key format to ensure proper line wrapping
+
+    PEM format requires:
+    - Header: -----BEGIN PRIVATE KEY-----
+    - Base64 content wrapped at 64 characters per line
+    - Footer: -----END PRIVATE KEY-----
+
+    Args:
+        private_key: Private key string that may have incorrect formatting
+
+    Returns:
+        Properly formatted PEM key
+    """
+    if not private_key:
+        return private_key
+
+    normalized = private_key.strip()
+
+    # Debug logging
+    logger.info(f"[DEBUG] fix_pem_format input length: {len(normalized)}")
+    logger.info(f"[DEBUG] fix_pem_format input (first 200 chars): {repr(normalized[:200])}")
+    logger.info(f"[DEBUG] fix_pem_format input (last 200 chars): {repr(normalized[-200:])}")
+    logger.info(f"[DEBUG] Has BEGIN header: {'-----BEGIN PRIVATE KEY-----' in normalized}")
+    logger.info(f"[DEBUG] Has END header: {'-----END PRIVATE KEY-----' in normalized}")
+
+    # Always re-wrap the key to ensure proper formatting
+    # Extract the base64 content between headers, removing ALL whitespace
+    if '-----BEGIN PRIVATE KEY-----' in normalized and '-----END PRIVATE KEY-----' in normalized:
+        # Split and get content between headers
+        parts = normalized.split('-----BEGIN PRIVATE KEY-----')
+        if len(parts) > 1:
+            remaining = parts[1]
+            parts2 = remaining.split('-----END PRIVATE KEY-----')
+            if len(parts2) > 1:
+                base64_content = parts2[0].replace('\n', '').replace('\r', '').replace('\t', '').strip()
+
+                logger.info(f"[DEBUG] Extracted base64 content length: {len(base64_content)}")
+
+                # Re-wrap at exactly 64 characters per line
+                wrapped_lines = []
+                for i in range(0, len(base64_content), 64):
+                    wrapped_lines.append(base64_content[i:i+64])
+
+                wrapped_content = '\n'.join(wrapped_lines)
+                result = f"-----BEGIN PRIVATE KEY-----\n{wrapped_content}\n-----END PRIVATE KEY-----\n"
+                logger.info(f"[DEBUG] Re-wrapped PEM key, total length: {len(result)}")
+                logger.info(f"[DEBUG] First 200 chars of result: {repr(result[:200])}")
+                return result
+
+    elif '-----BEGIN RSA PRIVATE KEY-----' in normalized:
+        parts = normalized.split('-----BEGIN RSA PRIVATE KEY-----')
+        if len(parts) > 1:
+            remaining = parts[1]
+            parts2 = remaining.split('-----END RSA PRIVATE KEY-----')
+            if len(parts2) > 1:
+                base64_content = parts2[0].replace('\n', '').replace('\r', '').replace('\t', '').strip()
+
+                wrapped_lines = []
+                for i in range(0, len(base64_content), 64):
+                    wrapped_lines.append(base64_content[i:i+64])
+
+                wrapped_content = '\n'.join(wrapped_lines)
+                result = f"-----BEGIN RSA PRIVATE KEY-----\n{wrapped_content}\n-----END RSA PRIVATE KEY-----"
+                logger.info(f"[DEBUG] Re-wrapped RSA PEM key, total length: {len(result)}")
+                return result
+
+    # If we can't parse it, return as-is
+    logger.warning("[DEBUG] Could not fix PEM format, returning original")
+    return private_key
 
 
 class SheetsWriter:
@@ -28,26 +104,18 @@ class SheetsWriter:
 
         if credentials_json:
             # Use credentials from environment variable (Railway)
-            scope = ['https://spreadsheets.google.com/feeds',
-                     'https://www.googleapis.com/auth/drive']
-            import json
-
+            # Use the newer gspread API that uses google-auth instead of oauth2client
             logger.info(f"[DEBUG] SheetsWriter received credentials_json type: {type(credentials_json)}")
 
             # Handle escaped JSON in environment variables
             if isinstance(credentials_json, str):
                 logger.info("[DEBUG] credentials_json is a string, parsing...")
                 try:
-                    # Try parsing as-is first
                     credentials_dict = json.loads(credentials_json)
                     logger.info("[DEBUG] Parsed credentials_json string directly")
                 except json.JSONDecodeError:
                     # If it fails, try to fix common escaping issues
-                    # Railway may escape quotes: {\"key\": \"value\"}
-                    import re
                     cleaned = credentials_json.strip()
-
-                    # Remove extra escaping
                     cleaned = re.sub(r'\"', '"', cleaned)
 
                     # Replace actual newlines with \n in JSON strings
@@ -57,57 +125,56 @@ class SheetsWriter:
 
                     try:
                         credentials_dict = json.loads(cleaned)
-
                         # Restore actual newlines in private_key
                         if 'private_key' in credentials_dict:
                             credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\n', '\n')
                             credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\r', '\r')
                             credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\t', '\t')
-
                     except:
-                        # Last resort: evaluate literal (safe for credentials only)
                         credentials_dict = eval(cleaned)
             else:
                 logger.info("[DEBUG] credentials_json is already a dict")
                 credentials_dict = credentials_json
 
-            # DEBUG: Show private_key before any processing
-            if 'private_key' in credentials_dict:
-                literal_newline = '\\n'
-                actual_newline = chr(10)
-                logger.info(f"[DEBUG] SheetsWriter private_key BEFORE final check (first 200 chars): {repr(credentials_dict['private_key'][:200])}")
-                logger.info(f"[DEBUG] private_key contains literal backslash-n? {literal_newline in credentials_dict['private_key']}")
-                logger.info(f"[DEBUG] private_key contains actual newline? {actual_newline in credentials_dict['private_key']}")
-
             # CRITICAL: Ensure private_key has actual newlines, not literal \n
-            # This handles both dict input and parsed JSON
             if 'private_key' in credentials_dict and isinstance(credentials_dict['private_key'], str):
                 if '\\n' in credentials_dict['private_key']:
                     logger.info("[DEBUG] Found literal \\n in private_key, converting to actual newlines")
                     credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\n', '\n')
                     credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\r', '\r')
                     credentials_dict['private_key'] = credentials_dict['private_key'].replace('\\t', '\t')
-                    logger.info(f"[DEBUG] After conversion, private_key (first 200 chars): {repr(credentials_dict['private_key'][:200])}")
 
-            # DEBUG: Show private_key after all processing
-            if 'private_key' in credentials_dict:
-                actual_newline = chr(10)
-                logger.info(f"[DEBUG] SheetsWriter private_key AFTER all processing (first 200 chars): {repr(credentials_dict['private_key'][:200])}")
-                logger.info(f"[DEBUG] private_key contains actual newline NOW? {actual_newline in credentials_dict['private_key']}")
+            # Fix PEM format - ensure proper 64-character line wrapping
+            if 'private_key' in credentials_dict and credentials_dict['private_key']:
+                logger.info("[DEBUG] Fixing PEM key format")
+                credentials_dict['private_key'] = fix_pem_format(credentials_dict['private_key'])
 
-            # Use from_json_keyfile_dict to avoid file write/read issues
-            # This directly uses the dictionary without JSON serialization
-            logger.info("[DEBUG] Using from_json_keyfile_dict to create credentials")
-            credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
-            self.client = gspread.authorize(credentials)
-            logger.info("[DEBUG] Credentials created successfully using dict method")
+            # Use temporary file approach to avoid pyasn1 string parsing issues
+            # This is more reliable than passing dict directly
+            scope = ['https://spreadsheets.google.com/feeds',
+                     'https://www.googleapis.com/auth/drive']
+            logger.info("[DEBUG] Using temporary file approach for credentials")
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                json.dump(credentials_dict, f)
+                temp_path = f.name
+            try:
+                credentials = ServiceAccountCredentials.from_json_keyfile_name(temp_path, scope)
+                self.client = gspread.authorize(credentials)
+                logger.info("[DEBUG] Credentials created successfully using temp file")
+            finally:
+                try:
+                    os.unlink(temp_path)
+                except:
+                    pass
 
         elif credentials_path and os.path.exists(credentials_path):
             # Use credentials file (local development)
             scope = ['https://spreadsheets.google.com/feeds',
                      'https://www.googleapis.com/auth/drive']
+            logger.info(f"[DEBUG] Using credentials file: {credentials_path}")
             credentials = ServiceAccountCredentials.from_json_keyfile_name(credentials_path, scope)
             self.client = gspread.authorize(credentials)
+            logger.info("[DEBUG] Credentials created from file")
         else:
             raise ValueError("Either credentials_path or credentials_json must be provided")
 
@@ -188,20 +255,25 @@ class SheetsWriter:
             if not job_data.get('opened') or job_data['opened'] == '':
                 job_data['opened'] = datetime.now().strftime('%Y-%m-%d')
 
-            # Convert job data to row format
+            # Convert job data to row format with pre-computed scores
             from models.job_schema import JobData
-            job = JobData(**job_data)
+            from scraper.job_scorer import enhance_job_with_scores
+
+            # Enhance job data with pre-computed scores
+            job_with_scores = enhance_job_with_scores(job_data)
+            job = JobData(**job_with_scores)
             row_data = job.to_google_sheets_row()
 
-            # Write to sheet using update to specify exact range (B-AH columns)
-            # row_data[0] is empty for column A, row_data[1:] is columns B-AH (34 columns)
-            # Range format: "B6:AH6" for row 6
-            cell_range = f"B{row_number}:AH{row_number}"
+            # Write to sheet using update to specify exact range (B-AR columns)
+            # row_data[0] is empty for column A, row_data[1:] is columns B-AR (43 columns)
+            # Range format: "B6:AR6" for row 6
+            cell_range = f"B{row_number}:AR{row_number}"
 
-            # Ensure we have exactly 34 columns (B to AH)
-            row_to_write = row_data[1:34]  # Skip column A, take columns B-AH
+            # row_data has 44 elements (index 0-43), index 0 is empty for column A
+            # We need columns B-AR which are indices 1-43 (43 columns total)
+            row_to_write = row_data[1:44]  # Skip column A, take columns B-AR (43 columns)
             # Pad with empty strings if needed
-            while len(row_to_write) < 34:
+            while len(row_to_write) < 43:
                 row_to_write.append('')
 
             self.worksheet.update(cell_range, [row_to_write], value_input_option='USER_ENTERED')
