@@ -22,6 +22,20 @@ class Settings(BaseSettings):
     google_sheet_name: str = "职位数据"
     google_credentials_json: Optional[str] = None  # JSON string for Railway
 
+    # Multi-User Sheets Configuration
+    # User A's sheet
+    user_a_sheet_id: str = ""
+    user_a_sheet_name: str = "职位数据-小A"
+    # User B's sheet
+    user_b_sheet_id: str = ""
+    user_b_sheet_name: str = "职位数据-小B"
+    # User C's sheet
+    user_c_sheet_id: str = ""
+    user_c_sheet_name: str = "职位数据-小C"
+    # User D's sheet (backup)
+    user_d_sheet_id: str = ""
+    user_d_sheet_name: str = "职位数据-备用"
+
     # Scraper Configuration
     headless_browser: bool = True
     page_timeout: int = 30000
@@ -46,6 +60,32 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+
+    @property
+    def user_sheets(self) -> dict:
+        """Get user sheet configurations as a dictionary"""
+        return {
+            'a': {
+                'id': self.user_a_sheet_id or self.google_sheet_id,
+                'name': self.user_a_sheet_name,
+                'display_name': '小A'
+            },
+            'b': {
+                'id': self.user_b_sheet_id or self.google_sheet_id,
+                'name': self.user_b_sheet_name,
+                'display_name': '小B'
+            },
+            'c': {
+                'id': self.user_c_sheet_id or self.google_sheet_id,
+                'name': self.user_c_sheet_name,
+                'display_name': '小C'
+            },
+            'd': {
+                'id': self.user_d_sheet_id or self.google_sheet_id,
+                'name': self.user_d_sheet_name,
+                'display_name': '备用'
+            }
+        }
 
 
 # Create settings instance

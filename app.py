@@ -96,6 +96,43 @@ def enrich_job_with_visa_info(job_data: dict) -> dict:
         return job_data
 
 
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    """
+    Get available users and their sheet configurations
+
+    Returns:
+    {
+        "success": true,
+        "users": [
+            {"id": "a", "name": "小A", "sheet_name": "职位数据-小A"},
+            {"id": "b", "name": "小B", "sheet_name": "职位数据-小B"},
+            {"id": "c", "name": "小C", "sheet_name": "职位数据-小C"},
+            {"id": "d", "name": "备用", "sheet_name": "职位数据-备用"}
+        ]
+    }
+    """
+    try:
+        users = []
+        for user_id, config in settings.user_sheets.items():
+            users.append({
+                'id': user_id,
+                'name': config['display_name'],
+                'sheet_name': config['name']
+            })
+
+        return jsonify({
+            "success": True,
+            "users": users
+        })
+    except Exception as e:
+        logger.error(f"Error getting users: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
 @app.route('/tutorial')
 def tutorial():
     """Render tutorial page"""
@@ -215,12 +252,17 @@ def save():
     """
     API endpoint to save job data to Google Sheets
 
-    Expects JSON body with job data fields
+    Expects JSON body with job data fields and optional user parameter:
+    {
+        "user": "a",  // Optional: which user's sheet to write to (default: "a")
+        ...job data fields...
+    }
 
     Returns:
     {
         "success": true/false,
         "row_number": 47,
+        "saved_to": "小A的表格",
         "error": "error message if failed"
     }
     """
@@ -233,7 +275,31 @@ def save():
                 "error": "Missing job data in request body"
             }), 400
 
-        logger.info(f"Saving job: {job_data.get('company')} - {job_data.get('title')}")
+        # Get user parameter (default to "a" if not provided)
+        user_id = job_data.pop('user', 'a')  # Remove from job_data before saving
+
+        logger.info(f"Saving job for user '{user_id}': {job_data.get('company')} - {job_data.get('title')}")
+
+        # Get user's sheet configuration
+        user_sheets = settings.user_sheets
+        user_config = user_sheets.get(user_id)
+
+        if not user_config:
+            return jsonify({
+                "success": False,
+                "error": f"Invalid user '{user_id}'. Valid users: {list(user_sheets.keys())}"
+            }), 400
+
+        sheet_id = user_config['id']
+        sheet_name = user_config['name']
+
+        if not sheet_id:
+            return jsonify({
+                "success": False,
+                "error": f"No sheet ID configured for user '{user_config['display_name']}'. Please configure USER_{user_id.upper()}_SHEET_ID."
+            }), 500
+
+        logger.info(f"Writing to sheet: {sheet_name} (ID: {sheet_id})")
 
         # Get Google credentials
         credentials = get_google_credentials()
@@ -244,36 +310,39 @@ def save():
                 "error": "Google credentials not configured"
             }), 500
 
-        # Initialize writer
+        # Initialize writer with user's sheet
         writer = SheetsWriter(credentials_json=credentials)
         writer.open_spreadsheet(
-            sheet_id=settings.google_sheet_id,
-            sheet_name=settings.google_sheet_name
+            sheet_id=sheet_id,
+            sheet_name=sheet_name
         )
 
-        # Check for duplicates
+        # Check for duplicates in user's sheet
         duplicate_row = writer.check_duplicate(
             job_data.get('company', ''),
             job_data.get('title', '')
         )
 
         if duplicate_row:
-            logger.warning(f"Duplicate found at row {duplicate_row}")
+            logger.warning(f"Duplicate found at row {duplicate_row} in {sheet_name}")
             return jsonify({
                 "success": False,
                 "error": f"This job already exists in row {duplicate_row}",
-                "duplicate_row": duplicate_row
+                "duplicate_row": duplicate_row,
+                "sheet": sheet_name
             }), 409  # Conflict status code
 
         # Write to Google Sheets
         result = writer.write_job(job_data)
 
         if result.get('success'):
-            logger.info(f"Saved to row {result['row_number']}")
+            logger.info(f"Saved to row {result['row_number']} in {sheet_name}")
             return jsonify({
                 "success": True,
                 "row_number": result['row_number'],
                 "job_id": result['job_id'],
+                "saved_to": f"{user_config['display_name']}的表格",
+                "sheet_name": sheet_name,
                 "message": "Job saved successfully"
             })
         else:

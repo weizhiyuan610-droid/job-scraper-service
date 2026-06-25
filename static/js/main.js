@@ -4,6 +4,36 @@
  */
 
 let currentJobData = null;
+let currentUser = 'a';  // Default to user A
+
+/**
+ * Update user display when selection changes
+ */
+function updateUserDisplay() {
+    const select = document.getElementById('currentUser');
+    const indicator = document.getElementById('userIndicator');
+    const selectedOption = select.options[select.selectedIndex];
+
+    currentUser = select.value;
+    const userNames = {
+        'a': '小A',
+        'b': '小B',
+        'c': '小C',
+        'd': '备用'
+    };
+
+    indicator.textContent = `当前: ${userNames[currentUser]}`;
+
+    // Visual feedback
+    const colors = {
+        'a': 'bg-blue-600',
+        'b': 'bg-purple-600',
+        'c': 'bg-pink-600',
+        'd': 'bg-gray-600'
+    };
+
+    indicator.className = `px-3 py-1 text-white rounded-full text-sm font-medium ${colors[currentUser]}`;
+}
 
 /**
  * Populate form with extracted data
@@ -179,6 +209,7 @@ async function saveJob(event) {
     }
 
     const formData = {
+        user: currentUser,  // Add user parameter to route to correct sheet
         company: document.getElementById('company').value,
         title: document.getElementById('title').value,
         industry: document.getElementById('industry').value,
@@ -292,7 +323,9 @@ async function saveJob(event) {
         if (result.success) {
             document.getElementById('rowNumber').textContent = result.row_number;
             showSuccess(true);
-            showToast('🎉 Successfully saved to Google Sheets!', 'success');
+            // Show which sheet was saved to
+            const savedTo = result.saved_to || 'Google Sheets';
+            showToast(`🎉 Successfully saved to ${savedTo}!`, 'success');
         } else {
             if (result.duplicate_row) {
                 showToast('⚠️ Job already exists (row ' + result.duplicate_row + ')', 'warning');
