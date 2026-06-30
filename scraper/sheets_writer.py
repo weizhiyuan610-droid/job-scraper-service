@@ -259,6 +259,15 @@ class SheetsWriter:
             from models.job_schema import JobData
             from scraper.job_scorer import enhance_job_with_scores
 
+            # Ensure company_info is a dict, not a string
+            if 'company_info' in job_data and isinstance(job_data['company_info'], str):
+                try:
+                    job_data['company_info'] = json.loads(job_data['company_info'])
+                    logger.info(f"Parsed company_info from JSON string")
+                except json.JSONDecodeError:
+                    logger.warning(f"company_info is invalid JSON string, using default")
+                    job_data['company_info'] = {}
+
             # Enhance job data with pre-computed scores
             job_with_scores = enhance_job_with_scores(job_data)
             job = JobData(**job_with_scores)

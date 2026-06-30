@@ -3,8 +3,12 @@ Pydantic schemas for job data validation
 Enhanced with precise degree/visa parsing
 """
 from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Union
 import re
+import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class JobExtraction(BaseModel):
@@ -379,6 +383,41 @@ class JobData(JobExtraction):
 
     # Company information (enriched from database/AI)
     company_info: Optional[CompanyInfo] = Field(default_factory=CompanyInfo, description="Enriched company information")
+
+    @field_validator('company_info', mode='before')
+    @classmethod
+    def parse_company_info(cls, v):
+        """
+        Handle company_info that might be a JSON string or dict.
+        This can happen when data is passed through JSON APIs.
+        """
+        if v is None:
+            return CompanyInfo()
+
+        # If it's already a CompanyInfo object, return as-is
+        if isinstance(v, CompanyInfo):
+            return v
+
+        # If it's a string, try to parse as JSON
+        if isinstance(v, str):
+            try:
+                v = json.loads(v)
+                logger.debug(f"Parsed company_info from JSON string")
+            except json.JSONDecodeError:
+                logger.warning(f"company_info is a string but not valid JSON: {v[:100]}")
+                return CompanyInfo()
+
+        # If it's a dict, validate and create CompanyInfo
+        if isinstance(v, dict):
+            try:
+                return CompanyInfo(**v)
+            except Exception as e:
+                logger.warning(f"Failed to create CompanyInfo from dict: {e}")
+                return CompanyInfo()
+
+        # Fallback: return default CompanyInfo
+        logger.warning(f"company_info has unexpected type {type(v)}, returning default")
+        return CompanyInfo()
 
     # Pre-computed scores (calculated during scraping)
     priority_score: Optional[float] = Field(None, description="Priority score (0-100) for sorting")
