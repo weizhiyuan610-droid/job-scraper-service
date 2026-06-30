@@ -5,6 +5,7 @@ Job Scoring Algorithm - Pre-compute scores during scraping
 from datetime import datetime
 from typing import Dict, Optional
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -472,6 +473,27 @@ def enhance_job_with_scores(job_extraction) -> Dict:
         job_dict = job_extraction.dict()
     else:
         job_dict = job_extraction
+
+    # Ensure company_info is a dict, not a string or CompanyInfo object
+    if 'company_info' in job_dict:
+        company_info = job_dict['company_info']
+        if isinstance(company_info, str):
+            try:
+                job_dict['company_info'] = json.loads(company_info)
+                logger.debug(f"Parsed company_info from JSON string in enhance_job_with_scores")
+            except json.JSONDecodeError:
+                logger.warning(f"company_info is invalid JSON string in enhance_job_with_scores")
+                job_dict['company_info'] = {}
+        elif hasattr(company_info, 'model_dump'):
+            # It's a Pydantic model, convert to dict
+            job_dict['company_info'] = company_info.model_dump()
+        elif hasattr(company_info, 'dict'):
+            # It's a Pydantic v1 model, convert to dict
+            job_dict['company_info'] = company_info.dict()
+        elif not isinstance(company_info, dict):
+            # Unexpected type, use empty dict
+            logger.warning(f"company_info has unexpected type {type(company_info)} in enhance_job_with_scores")
+            job_dict['company_info'] = {}
 
     # Calculate all scores
     scorer = JobScorer()
